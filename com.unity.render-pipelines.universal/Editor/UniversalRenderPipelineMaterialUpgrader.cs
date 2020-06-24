@@ -271,7 +271,7 @@ namespace UnityEditor.Rendering.Universal
             material.SetFloat("_WorkflowMode", 0.0f);
             CoreUtils.SetKeyword(material, "_OCCLUSIONMAP", material.GetTexture("_OcclusionMap"));
             CoreUtils.SetKeyword(material, "_METALLICSPECGLOSSMAP", material.GetTexture("_SpecGlossMap"));
-            CoreUtils.SetKeyword(material, "_SPECULAR_SETUP", true);
+            CoreUtils.SetKeyword(material, "_SPECULAR_SETUP", true); 
             UpdateSurfaceTypeAndBlendMode(material);
             BaseShaderGUI.SetupMaterialBlendMode(material);
         }

@@ -58,6 +58,20 @@ half4 frag(PackedVaryings packedInput) : SV_TARGET
 			surfaceDescription.Emission,
 			surfaceDescription.Alpha); 
 
+	#ifdef _ToonStyle
+	Light mainLight = GetMainLight(inputData.shadowCoord);
+	half NdotL = saturate(dot(inputData.normalWS, mainLight.direction));
+	//NdotL = smoothstep(0, 0.01, NdotL); 
+
+	half3 rimDot = 1 - dot(inputData.viewDirectionWS, inputData.normalWS);
+	half rimIntensity = rimDot*pow(NdotL, 0.1);
+	half rimW = surfaceDescription.RimWidth;	
+	rimIntensity = smoothstep(rimW - 0.01, rimW+0.01, rimIntensity);
+	half3 rim = rimIntensity * mainLight.color;
+	color.rgb += rim;
+	#endif 
+	
+
     color.rgb = MixFog(color.rgb, inputData.fogCoord); 
     return color;
 }

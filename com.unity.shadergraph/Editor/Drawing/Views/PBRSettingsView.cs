@@ -45,6 +45,15 @@ namespace UnityEditor.ShaderGraph.Drawing
                     });
                 });
 
+            ps.Add(new PropertyRow(new Label("Style")), (row) =>
+            {
+                row.Add(new EnumField(PBRStyle.Photorealistic), (field) =>
+                {
+                    field.value = m_Node.pbrStyle;
+                    field.RegisterValueChangedCallback(ChangePBRStyle);
+                });
+            });
+
             ps.Add(new PropertyRow(new Label("Two Sided")), (row) =>
                 {
                     row.Add(new Toggle(), (toggle) =>
@@ -82,6 +91,15 @@ namespace UnityEditor.ShaderGraph.Drawing
 
             m_Node.owner.owner.RegisterCompleteObjectUndo("Alpha Mode Change");
             m_Node.alphaMode = (AlphaMode)evt.newValue;
+        }
+
+        void ChangePBRStyle(ChangeEvent<Enum> evt)
+        {
+            if (Equals(m_Node.pbrStyle, evt.newValue))
+                return;
+
+            m_Node.owner.owner.RegisterCompleteObjectUndo("PBR Style Change");
+            m_Node.pbrStyle = (PBRStyle)evt.newValue;
         }
 
         void ChangeTwoSided(ChangeEvent<bool> evt)

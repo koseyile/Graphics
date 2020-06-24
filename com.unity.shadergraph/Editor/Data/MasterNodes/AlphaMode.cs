@@ -15,4 +15,10 @@ namespace UnityEditor.ShaderGraph
         Additive,
         Multiply
     }
+
+    enum PBRStyle
+    {
+        Photorealistic,
+        Toon,
+    }
 }

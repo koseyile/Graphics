@@ -36,6 +36,7 @@ Pass
     $AlphaClip:                         #define _AlphaClip 1
     $Normal:                            #define _NORMALMAP 1
     $SpecularSetup:                     #define _SPECULAR_SETUP
+	$ToonStyle:							#define _ToonStyle
     $BlendMode.Add:                     #define _BLENDMODE_ADD 1
     $BlendMode.Premultiply:             #define _ALPHAPREMULTIPLY_ON 1
     $Attributes.normalOS:               #define ATTRIBUTES_NEED_NORMAL
