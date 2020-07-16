@@ -31,7 +31,10 @@ float _DitherAlpha;
 struct Attributes
 {
 	float4 vertex : POSITION;
+    float3 normal : NORMAL;
+#ifdef TANGENT_OUTLINE
     float4 tangent : TANGENT;
+#endif
 	half4 color : COLOR0;
     float4 texcoord : TEXCOORD0;
 };
@@ -64,8 +67,12 @@ Varyings vert_simple (Attributes input)
 	cameraFactor = pow(cameraFactor / _Scale, 0.5f);
 
 	// 有时w不为0，所以这里只使用xyz
-	// 把切线transform到view space
-	half3 N = mul(UNITY_MATRIX_MV, float4(input.tangent.xyz, 1.0f)).xyz;//UnityObjectToViewPos(input.tangent.xyz);
+	// 把切线或法线transform到view space
+#ifdef TANGENT_OUTLINE
+	half3 N = mul((float3x3)UNITY_MATRIX_MV, input.tangent.xyz);
+#else
+    half3 N = mul((float3x3)UNITY_MATRIX_MV, input.normal.xyz);
+#endif
 	// 用N来确定XY平面的一个扩张方向
 	N.z = 0.01f;
 	N = normalize(N);
@@ -103,10 +110,15 @@ Varyings vert_complex (Attributes input)
 	half cameraFactor = -output.position.z / unity_CameraProjection[1][1];
 
 	// Somehow the w component not be zero, so only use xyz
-	// 把切线transform到view space
-	half3 N = mul(UNITY_MATRIX_MV, float4(input.tangent.xyz, 1.0f)).xyz;//UnityObjectToViewPos(input.tangent.xyz);
+	// 把切线或法线transform到view space
+#ifdef TANGENT_OUTLINE
+    half3 N = mul((float3x3)UNITY_MATRIX_MV, input.tangent.xyz);
+#else
+    half3 N = mul((float3x3)UNITY_MATRIX_MV, input.normal.xyz);
+#endif
 	// 用N来确定XY平面的一个扩张方向
 	N.z = 0.01f;
+    //N.z = 0;
 	N = normalize(N);
 
 	//NOTE: do not use camera adjustment factor from vertex color at present
@@ -114,7 +126,7 @@ Varyings vert_complex (Attributes input)
 	// input.color.g = 0.5f + saturate((-output.position.z - start)*2/start) * (input.color.g - 0.5f);
 	// S = pow(S / _Scale, 0.4f + input.color.g * 0.2f);
 	cameraFactor = pow(cameraFactor / _Scale, 0.5f);
-	half offset = _OutlineWidth * _Scale * input.color.a * cameraFactor;
+	half offset = _OutlineWidth * _Scale * input.color.g * cameraFactor;
 	// 施加Z偏移。顶点色G控制Z方向上的偏移
 	// output.position.xyz作为方向向量的话就是view direction
 	output.position.xyz += normalize(output.position.xyz) * _MaxOutlineZOffset * _Scale * (input.color.b-0.5f);
