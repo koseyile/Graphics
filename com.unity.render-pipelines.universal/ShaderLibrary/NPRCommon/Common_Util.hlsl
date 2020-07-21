@@ -166,19 +166,6 @@ half3 hsv_to_rgb(half3 HSV)
     return (RGB);
 }
 
-// light prob
-half _lightProbToggle;
-half4 _lightProbColor;
-void applyLightProb(inout half3 color)
-{
-	color *= _lightProbToggle > 0.5f ? _lightProbColor.rgb : half3(1,1,1);
-}
-
-void applyLightProb(inout half4 color)
-{
-	color *= _lightProbToggle > 0.5f ? _lightProbColor : half4(1,1,1,1);
-}
-
 // TBN matrix
 // NOTE: need store bitangent sign in wTangent.w
 inline void calcTBNMatrix(in half3 normal, in half4 tangent, out half3 tspace0, out half3 tspace1, out half3 tspace2)

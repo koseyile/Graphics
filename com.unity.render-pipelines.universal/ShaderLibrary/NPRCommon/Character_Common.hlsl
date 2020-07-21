@@ -13,6 +13,8 @@ half _LightArea;
 half _SecondShadow;
 half3 _FirstShadowMultColor;
 half3 _SecondShadowMultColor;
+half _ShadowFeather;
+half _ShadowFeatherCenter;
 
 half _Shininess;
 half _SpecMulti;
@@ -45,6 +47,13 @@ half rim_factor(half3 N, half3 V, half shininess)
 half front_factor(half3 N, half3 V, half shininess)
 {
 	return pow(max(0, dot(N, V)), shininess);
+}
+
+float sigmoid(float x, float center, float sharp)
+{
+    float s;
+    s = 1 / (1 + pow(100000, (-3 * sharp * (x - center))));
+    return s;
 }
 
 
@@ -98,7 +107,7 @@ half3 complex_toon_diffuse(half factor, half t1, half t2, half3 baseTexColor)
 
 //3阶：light, light shadow(_FirstShadowMultColor), dark shadow(_SecondShadowMultColor)
 // 高光贴图的G通道乘以顶点色的R通道可以控制阴影的区域
-half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor)
+half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor, half3 mainLightColor, half3 GI, half shadowAttenuation)
 {
 	half3 diffColor = half3(1.0f, 1.0f, 1.0f).rgb;
 
@@ -108,7 +117,7 @@ half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor)
 	if (less(D, 0.09f))
 	{
 		threshold = (factor + D) * 0.5f;
-		half3 shadowColor = less(threshold, _SecondShadow)? _SecondShadowMultColor: _FirstShadowMultColor;
+		half3 shadowColor = less(threshold, _SecondShadow)? _SecondShadowMultColor: _FirstShadowMultColor + GI;
 		diffColor = baseTexColor * shadowColor;
 	}
 	else 
@@ -118,7 +127,12 @@ half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor)
 		else D = D * 1.25f - 0.125f;
 
 		threshold = (factor + D) * 0.5f;
-        half3 shadowColor = less(threshold, _LightArea)? _FirstShadowMultColor: diffColor;
+
+        half w = sigmoid(threshold, _LightArea, _ShadowFeather);
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w * shadowAttenuation);
+
+        //half3 shadowColor = less(threshold, _LightArea) ? _FirstShadowMultColor * GI : _MainLightColor.rgb;
+
         diffColor = baseTexColor * shadowColor;
 	}
 	return diffColor;

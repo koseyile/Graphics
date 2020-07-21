@@ -36,13 +36,14 @@ struct Attributes
     float4 tangent : TANGENT;
 #endif
 	half4 color : COLOR0;
-    float4 texcoord : TEXCOORD0;
+    float4 uv0 : TEXCOORD0;
 };
 
 struct Varyings
 {
 	float4 position : SV_POSITION;
 	half4 color : COLOR0;
+    float2 uv0 : TEXCOORD0;
 	float4 scrpos : TEXCOORD3;
 };
 
@@ -92,6 +93,9 @@ Varyings vert_simple (Attributes input)
 		output.scrpos = ComputeScreenPos(output.position);
 		output.scrpos.z = _DitherAlpha;
 	}
+#ifdef OUTLINE_BLEND
+    output.uv0 = TRANSFORM_TEX(input.uv0.xy, _MainTex);
+#endif
 	return output;
 }
 
@@ -143,6 +147,10 @@ Varyings vert_complex (Attributes input)
 		output.scrpos = ComputeScreenPos(output.position);
 		output.scrpos.z = _DitherAlpha;
 	}
+
+#ifdef OUTLINE_BLEND
+    output.uv0 = TRANSFORM_TEX(input.uv0.xy, _MainTex);
+#endif
 	return output;
 }
 
@@ -150,7 +158,13 @@ Varyings vert_complex (Attributes input)
 half4 frag (Varyings input) : SV_Target
 {
 	half4 color = input.color;
+#ifdef OUTLINE_BLEND
+    half4 tex = tex2D(_MainTex, input.uv0);
+    color.rgb *= _BaseColor.rgb;
+    color.rgb *= tex;
+#else
 	color.rgb *= _BaseColor.rgb;
+#endif
 	//color.rgb = input.color.rgb;
 	if(_UsingDitherAlpha)
 		dither_clip(input.scrpos, input.scrpos.z);

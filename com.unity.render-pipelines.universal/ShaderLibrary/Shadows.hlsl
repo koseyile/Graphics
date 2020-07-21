@@ -253,6 +253,15 @@ float4 GetShadowCoord(VertexPositionInputs vertexInput)
 #endif
 }
 
+float4 GetShadowCoord(float4 positionCS, float3 positionWS)
+{
+#if SHADOWS_SCREEN
+    return ComputeScreenPos(positionCS);
+#else
+    return TransformWorldToShadowCoord(positionWS);
+#endif
+}
+
 float3 ApplyShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection)
 {
     float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));
