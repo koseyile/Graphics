@@ -277,6 +277,11 @@ float4 GetShadowCoord(VertexPositionInputs vertexInput)
     return TransformWorldToShadowCoord(vertexInput.positionWS);
 }
 
+float4 GetShadowCoord(float3 positionWS)
+{
+    return TransformWorldToShadowCoord(positionWS);
+}
+
 float3 ApplyShadowBias(float3 positionWS, float3 normalWS, float3 lightDirection)
 {
     float invNdotL = 1.0 - saturate(dot(lightDirection, normalWS));
