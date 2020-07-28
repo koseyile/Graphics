@@ -8,6 +8,7 @@ sampler2D _MainTex;
 sampler2D _MainTex_Alpha;
 float4 _MainTex_ST;
 sampler2D _LightMapTex;
+sampler2D _RampTex;
 
 half _LightArea;
 half _SecondShadow;
@@ -142,10 +143,13 @@ half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor, 
         threshold = (factor + D) * 0.5f;
         //threshold = factor;
         //threshold = smoothstep(_ShadowFeather - threshold, _ShadowFeather + threshold, threshold);
-
+#ifdef DIFFUSE_RAMP
+        half ramp = tex2D(_RampTex, float2(saturate(threshold - _LightArea), 0.5)).r;
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp * shadowAttenuation);
+#else
         half w = sigmoid(threshold, _LightArea, _ShadowFeather);
         half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w * shadowAttenuation);
-
+#endif
         //half3 shadowColor = less(threshold, _LightArea) ? _FirstShadowMultColor * GI : _MainLightColor.rgb;
 
         diffColor = baseTexColor * shadowColor;
@@ -247,7 +251,7 @@ Varyings vert(Attributes attribute)
     varying.diff.x = diffuse_factor(varying.normal, mainLightDir);
 #endif
 #ifdef RECEIVE_SHADOW
-    varying.shadowCoord = GetShadowCoord(varying.position, varying.objPos);
+    varying.shadowCoord = GetShadowCoord(varying.objPos);
 #endif
     //OUTPUT_SH(varying.normal, varying.vertexSH);
 
@@ -340,7 +344,7 @@ half4 frag(Varyings varying) : COLOR
     // 这会让一些不该有边缘光的地方出现边缘光。为了解决这个问题，在《GUILTY GEAR Xrd》中使用边缘光的Mask贴图来对边缘光区域进行调整。
 #ifdef RIM_GLOW
     //outColor.rgb = rgFrag(outColor.rgb, N, V);
-    outColor.rgb = rgFragEx(outColor.rgb, N, V, varying.diff.x);
+    outColor.rgb = rgFragEx(outColor.rgb, N, V, varying.diff.x, _LightArea);
 #endif
 
     //half shadow = SHADOW_ATTENUATION(varying);

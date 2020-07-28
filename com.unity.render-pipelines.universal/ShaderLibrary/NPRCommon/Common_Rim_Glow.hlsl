@@ -34,14 +34,14 @@ half3 rgFrag(in half3 srcColor, in float3 N, in float3 V)
     return lerp(srcColor, rgColor, clamp(f, 0, 1) * _RGRatio);
 }
 
-half3 rgFragEx(in half3 srcColor, in float3 N, in float3 V, half facter)
+half3 rgFragEx(in half3 srcColor, in float3 N, in float3 V, half facter, half lightArea)
 {
     half f = fresnel(N, V);
     half3 rgColor = _RGColor;
     // return rgColor + srcColor - rgColor * srcColor;
     // return rgColor;
     // return lerp(srcColor, rgColor, _RGRatio);
-    return lerp(srcColor, rgColor, clamp(f, 0, 1) * _RGRatio * (1 - step(facter, _LightArea)));
+    return lerp(srcColor, rgColor, clamp(f, 0, 1) * _RGRatio * (1 - step(facter, lightArea)));
     //return rgColor;
     //return lerp(srcColor, rgColor, step(clamp(f, 0, 1), _RGRatio));
 }
