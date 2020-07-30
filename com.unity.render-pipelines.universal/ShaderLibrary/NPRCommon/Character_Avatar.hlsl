@@ -39,6 +39,50 @@ float3 _VirtualLightDir;
 #ifdef FACE_MAP
 sampler2D _FaceMap;
 #endif
+#ifdef ENABLE_MATCAP
+sampler2D _Matcap;
+half4 _MatcapColor;
+#ifdef ENABLE_MATCAP_NROMAL_MAP
+sampler2D _MatcapNormalMap;
+uniform float4 _MatcapNormalMap_ST;
+#endif
+#endif
+
+
+struct Attributes
+{
+    float4 vertex : POSITION;
+    float3 normal : NORMAL;
+    float4 tangent : TANGENT;
+    float4 texcoord : TEXCOORD0;
+    // R通道控制阴影的区域
+    // G和B通道控制勾线
+    // 其中G通道控制XY平面的宽度，B通道控制Z方向的offset
+    half4 color : COLOR;
+};
+
+struct Varyings
+{
+    float4 position : POSITION;
+    half4 color : COLOR0;
+    float2 texcoord : TEXCOORD0;
+    float3 normal : TEXCOORD1;
+    float3 posWS : TEXCOORD2;
+    float4 scrpos : TEXCOORD3;
+#ifdef RECEIVE_SHADOW
+    float4 shadowCoord : TEXCOORD4;
+#endif
+#ifdef ENABLE_MATCAP
+    half2 matcapUV : TEXCOORD5;
+#ifdef ENABLE_MATCAP_NROMAL_MAP
+    half3 tspace0 : TEXCOORD6;
+    half3 tspace1 : TEXCOORD7;
+    half3 tspace2 : TEXCOORD8;
+#endif
+#endif
+    //DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
+    half2 diff : COLOR1;
+};
 
 // Lighting functions
 half diffuse_factor(half3 N, half3 L)
@@ -190,32 +234,33 @@ half3 complex_toon_specular(half3 N, half3 H, half threshold, half mask)
     return color;
 }
 
-
-struct Attributes
+void CalculateMatcapUV(half3 N, out half2 matcapUV)
 {
-    float4 vertex : POSITION;
-    float3 normal : NORMAL;
-    float4 texcoord : TEXCOORD0;
-    // R通道控制阴影的区域
-    // G和B通道控制勾线
-    // 其中G通道控制XY平面的宽度，B通道控制Z方向的offset
-    half4 color : COLOR;
-};
-
-struct Varyings
-{
-    float4 position : POSITION;
-    half4 color : COLOR0;
-    float2 texcoord : TEXCOORD0;
-    float3 normal : TEXCOORD1;
-    float3 objPos : TEXCOORD2;
-    float4 scrpos : TEXCOORD3;
-#ifdef RECEIVE_SHADOW
-    float4 shadowCoord : TEXCOORD4;
+#ifdef ENABLE_MATCAP
+    half3 normal = mul(UNITY_MATRIX_IT_MV, N);
+    normal = normalize(normal);
+    matcapUV.xy = normal.xy * 0.5f + 0.5f;
 #endif
-    //DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
-    half2 diff : COLOR1;
-};
+}
+
+void ApplyMatcap(Varyings varying, out half3 color)
+{
+#ifdef ENABLE_MATCAP
+#ifdef ENABLE_MATCAP_NROMAL_MAP
+    float2 uv = TRANSFORM_TEX(varying.texcoord, _MatcapNormalMap);
+    half3 normal = UnpackNormal(tex2D(_MatcapNormalMap, uv));
+    normal = TangentToWorldNormal(normal, varying.tspace0, varying.tspace1, varying.tspace2);
+    //float3x3 tangentTransform = float3x3(i.tangentDir, i.bitangentDir, i.normalDir);
+    normal = mul(UNITY_MATRIX_IT_MV, normal);
+    //float3 viewNormal = (mul(UNITY_MATRIX_V, float4(lerp(i.normalDir, mul(normal, tangentTransform).rgb, _Is_NormalMapForMatCap), 0))).rgb;
+    normal = normalize(normal);
+    varying.matcapUV.xy = normal.xy * 0.5f + 0.5f;
+#endif
+    color = tex2D(_Matcap, varying.matcapUV).rgb * _MatcapColor;
+#endif
+}
+
+
 
 Varyings vert(Attributes attribute)
 {
@@ -224,12 +269,16 @@ Varyings vert(Attributes attribute)
     varying.position = TransformObjectToHClip(attribute.vertex.xyz);
     varying.color = attribute.color;
     float4 objPos = mul(unity_ObjectToWorld, attribute.vertex);
-    varying.objPos = objPos.xyz / objPos.w;
-    varying.texcoord = TRANSFORM_TEX(attribute.texcoord.xy, _MainTex);
+    varying.posWS = objPos.xyz / objPos.w;
+    //varying.texcoord = TRANSFORM_TEX(attribute.texcoord.xy, _MainTex);
+    varying.texcoord = attribute.texcoord.xy;
 
     //Normal
     varying.normal = normalize(TransformObjectToWorldNormal(attribute.normal));
-    //outData.normal = normalize(mul(unity_ObjectToWorld, inData.normal).xyz);
+
+#if defined(ENABLE_MATCAP_NROMAL_MAP) && defined(ENABLE_MATCAP)
+    calcTBNMatrix(attribute.normal, attribute.tangent, varying.tspace0, varying.tspace1, varying.tspace2);
+#endif
     //Diffuse
     // calculate diffuse factor
 #ifdef FRONT_FACE_LIGHT
@@ -251,9 +300,13 @@ Varyings vert(Attributes attribute)
     varying.diff.x = diffuse_factor(varying.normal, mainLightDir);
 #endif
 #ifdef RECEIVE_SHADOW
-    varying.shadowCoord = GetShadowCoord(varying.objPos);
+    varying.shadowCoord = GetShadowCoord(varying.posWS);
 #endif
     //OUTPUT_SH(varying.normal, varying.vertexSH);
+
+#if defined(ENABLE_MATCAP_NROMAL_MAP) && defined(ENABLE_MATCAP)
+    CalculateMatcapUV(varying.normal, varying.matcapUV);
+#endif
 
     if (_UsingDitherAlpha)
     {
@@ -267,14 +320,14 @@ Varyings vert(Attributes attribute)
 half4 frag(Varyings varying) : COLOR
 {
     half4 outColor = (float4)0;
-
+    float2 mainUV = TRANSFORM_TEX(varying.texcoord, _MainTex);
     // 高光贴图的通道作用：
     // R通道：高光强度，控制高光的强度，当0时可以禁用
     // G通道：阴影阀值，它乘以顶点色的R通道可以控制阴影的区域
     // B通道：光滑度，镜面阈值；数值越大，高光越强。
-    half3 tex_Light_Color = tex2DRGB(_LightMapTex, varying.texcoord).rgb;
+    half3 tex_Light_Color = tex2DRGB(_LightMapTex, mainUV).rgb;
 
-    half3 baseTexColor = tex2D(_MainTex, varying.texcoord).rgb;
+    half3 baseTexColor = tex2D(_MainTex, mainUV).rgb;
 #ifdef RECEIVE_SHADOW
     Light mainLight = GetMainLight(varying.shadowCoord);
 #else
@@ -287,7 +340,7 @@ half4 frag(Varyings varying) : COLOR
     uint pixelLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
     {
-        Light light = GetAdditionalLight(lightIndex, varying.objPos);
+        Light light = GetAdditionalLight(lightIndex, varying.posWS);
         lightColor += light.color * light.distanceAttenuation / PI;
     }
     baseTexColor += lightColor;
@@ -322,7 +375,7 @@ half4 frag(Varyings varying) : COLOR
 
     // 高光项
     half3 N = normalize(varying.normal);
-    half3 V = normalize(_WorldSpaceCameraPos.xyz - varying.objPos);
+    half3 V = normalize(_WorldSpaceCameraPos.xyz - varying.posWS);
 #ifdef FRONT_FACE_LIGHT
     half3 H = normalize(_VirtualLightDir + V);
 #else
@@ -345,6 +398,12 @@ half4 frag(Varyings varying) : COLOR
 #ifdef RIM_GLOW
     //outColor.rgb = rgFrag(outColor.rgb, N, V);
     outColor.rgb = rgFragEx(outColor.rgb, N, V, varying.diff.x, _LightArea);
+#endif
+
+#ifdef ENABLE_MATCAP
+    half3 matcapColor;
+    ApplyMatcap(varying, matcapColor);
+    outColor.rgb += matcapColor;
 #endif
 
     //half shadow = SHADOW_ATTENUATION(varying);
