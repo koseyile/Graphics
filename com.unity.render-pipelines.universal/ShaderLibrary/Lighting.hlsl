@@ -359,10 +359,11 @@ half3 DirectBDRF(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half
 #endif
 
 #ifdef _ToonStyle
-	//specularTerm = 5 * smoothstep(4, 4.1, specularTerm);
 	if (isMianLight)
 	{
-		specularTerm = specularTerm * smoothstep(3, 3, specularTerm);
+        //specularTerm = 5 * smoothstep(4, 4.1, specularTerm);
+        specularTerm = 100 * smoothstep(2, 20, specularTerm); 
+		//specularTerm = specularTerm * smoothstep(3, 3, specularTerm);
 	}
 #endif
 
@@ -526,7 +527,7 @@ half3 GlobalIllumination(BRDFData brdfData, half3 bakedGI, half occlusion, half3
     
     half3 indirectSpecular = GlossyEnvironmentReflection(reflectVector, brdfData.perceptualRoughness, occlusion);
 
-    return EnvironmentBRDF(brdfData, indirectDiffuse, indirectSpecular, fresnelTerm);
+    return EnvironmentBRDF(brdfData, indirectDiffuse, indirectSpecular, fresnelTerm); 
 }
 
 void MixRealtimeAndBakedGI(inout Light light, half3 normalWS, inout half3 bakedGI, half4 shadowMask)
@@ -557,12 +558,6 @@ half3 LightingSpecular(half3 lightColor, half3 lightDir, half3 normal, half3 vie
 half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, half lightAttenuation, half3 normalWS, half3 viewDirectionWS, bool isMainLight)
 {
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
-#ifdef _ToonStyle
-	if (isMainLight)
-	{
-		NdotL = smoothstep(0, 0.01, NdotL);
-	}
-#endif
 	half3 radiance = lightColor * (lightAttenuation * NdotL);
 	return DirectBDRF(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight) * radiance;
 }
@@ -570,6 +565,30 @@ half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDi
 half3 LightingPhysicallyBased(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight)
 {
     return LightingPhysicallyBased(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight);
+}
+
+half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, half lightAttenuation, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL)
+{
+    half NdotL = saturate(dot(normalWS, lightDirectionWS));
+#ifdef _ToonStyle
+    half NdotL_Toon = styleNdotL;
+    if (isMainLight)
+    {
+        //NdotL_Toon = smoothstep(0, 0.01, NdotL);
+        //NdotL_Toon = saturate(NdotL_Toon + 0.5f);
+        //NdotL = lerp(NdotL_Toon, NdotL, styleScale);
+
+        //NdotL = lerp(NdotL, NdotL_Toon, styleScale);
+        NdotL = NdotL_Toon;
+    }
+#endif
+    half3 radiance = lightColor * (lightAttenuation * NdotL);
+    return DirectBDRF(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight) * radiance;
+}
+
+half3 LightingPhysicallyBasedStyle(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL)
+{
+    return LightingPhysicallyBasedStyle(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight, styleScale, styleNdotL);
 }
 
 half3 VertexLighting(float3 positionWS, half3 normalWS)
@@ -603,7 +622,8 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
     MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI, half4(0, 0, 0, 0));
 
     half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
-    color += LightingPhysicallyBased(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true);
+
+    color += LightingPhysicallyBased(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true); 
 
 #ifdef _ADDITIONAL_LIGHTS
     uint pixelLightCount = GetAdditionalLightsCount();
@@ -619,6 +639,37 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
 #endif
 
     color += emission;
+    return half4(color, alpha);
+}
+
+half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic, half3 specular,
+    half smoothness, half occlusion, half3 emission, half alpha, half styleScale, half styleNdotL)
+{
+    BRDFData brdfData;
+    InitializeBRDFData(albedo, metallic, specular, smoothness, alpha, brdfData);
+
+    Light mainLight = GetMainLight(inputData.shadowCoord);
+    MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI, half4(0, 0, 0, 0));
+
+    half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
+
+    color += LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL);
+
+#ifdef _ADDITIONAL_LIGHTS
+    uint pixelLightCount = GetAdditionalLightsCount();
+    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+    {
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS);
+        color += LightingPhysicallyBased(brdfData, light, inputData.normalWS, inputData.viewDirectionWS, false);
+    }
+#endif
+
+#ifdef _ADDITIONAL_LIGHTS_VERTEX
+    color += inputData.vertexLighting * brdfData.diffuse;
+#endif
+
+    color += emission;
+
     return half4(color, alpha);
 }
 

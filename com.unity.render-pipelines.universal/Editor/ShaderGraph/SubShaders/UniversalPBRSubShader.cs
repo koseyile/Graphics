@@ -45,8 +45,12 @@ namespace UnityEditor.Rendering.Universal
                 PBRMasterNode.OcclusionSlotId,
                 PBRMasterNode.AlphaSlotId,
                 PBRMasterNode.AlphaThresholdSlotId,
+                PBRMasterNode.StyleScaleSlotId,
                 PBRMasterNode.RimWidthSlotId,
-                PBRMasterNode.SpecularSizeSlotId
+                PBRMasterNode.SpecularSizeSlotId,
+                PBRMasterNode.TestColorScaleSlotId,
+                PBRMasterNode.TestColorSlotId,
+                PBRMasterNode.StyleNdotLSlotId
             },
 
             // Required fields
