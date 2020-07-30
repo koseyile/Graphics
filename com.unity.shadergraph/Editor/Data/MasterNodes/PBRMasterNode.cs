@@ -23,6 +23,12 @@ namespace UnityEditor.ShaderGraph
         public const string OcclusionSlotName = "Occlusion";
         public const string AlphaSlotName = "Alpha";
         public const string AlphaClipThresholdSlotName = "AlphaClipThreshold";
+        public const string StyleScaleSlotName = "StyleScale";
+        public const string RimWidthSlotName = "RimWidth";
+        public const string SpecularSizeSlotName = "SpecularSize";
+        public const string TestColorScaleSlotName = "TestColorScale";
+        public const string TestColorSlotName = "TestColor";
+        public const string StyleNdotLSlotName = "StyleNdotL";
         public const string PositionName = "Vertex Position";
         public const string NormalName = "Vertex Normal";
         public const string TangentName = "Vertex Tangent";
@@ -39,6 +45,12 @@ namespace UnityEditor.ShaderGraph
         public const int PositionSlotId = 9;
         public const int VertNormalSlotId = 10;
         public const int VertTangentSlotId = 11;
+        public const int StyleScaleSlotId = 12;
+        public const int RimWidthSlotId = 13;
+        public const int SpecularSizeSlotId = 14;
+        public const int TestColorScaleSlotId = 15;
+        public const int TestColorSlotId = 16;
+        public const int StyleNdotLSlotId = 17;
 
         public enum Model
         {
@@ -91,6 +103,24 @@ namespace UnityEditor.ShaderGraph
                     return;
 
                 m_AlphaMode = value;
+                Dirty(ModificationScope.Graph);
+            }
+        }
+
+        [SerializeField]
+        PBRStyle m_PBRStyle;
+
+        public PBRStyle pbrStyle
+        {
+            get { return m_PBRStyle; }
+            set
+            {
+                if (m_PBRStyle == value)
+                    return;
+
+                m_PBRStyle = value;
+                UpdateNodeAfterDeserialization();
+                Dirty(ModificationScope.Topological);
                 Dirty(ModificationScope.Graph);
             }
         }
@@ -173,6 +203,16 @@ namespace UnityEditor.ShaderGraph
             AddSlot(new Vector1MaterialSlot(AlphaSlotId, AlphaSlotName, AlphaSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
             AddSlot(new Vector1MaterialSlot(AlphaThresholdSlotId, AlphaClipThresholdSlotName, AlphaClipThresholdSlotName, SlotType.Input, 0.0f, ShaderStageCapability.Fragment));
 
+            if (pbrStyle == PBRStyle.Toon)
+            {
+                AddSlot(new Vector1MaterialSlot(StyleScaleSlotId, StyleScaleSlotName, StyleScaleSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
+                AddSlot(new Vector1MaterialSlot(RimWidthSlotId, RimWidthSlotName, RimWidthSlotName, SlotType.Input, 0.716f, ShaderStageCapability.Fragment));
+                AddSlot(new Vector1MaterialSlot(SpecularSizeSlotId, SpecularSizeSlotName, SpecularSizeSlotName, SlotType.Input, 4f, ShaderStageCapability.Fragment));
+                AddSlot(new Vector1MaterialSlot(TestColorScaleSlotId, TestColorScaleSlotName, TestColorScaleSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
+                AddSlot(new ColorRGBMaterialSlot(TestColorSlotId, TestColorSlotName, TestColorSlotName, SlotType.Input, Color.black, ColorMode.Default, ShaderStageCapability.Fragment));
+                AddSlot(new Vector1MaterialSlot(StyleNdotLSlotId, StyleNdotLSlotName, StyleNdotLSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
+            }
+
             // clear out slot names that do not match the slots
             // we support
             RemoveSlotsNameNotMatching(
@@ -188,7 +228,13 @@ namespace UnityEditor.ShaderGraph
                 SmoothnessSlotId,
                 OcclusionSlotId,
                 AlphaSlotId,
-                AlphaThresholdSlotId
+                AlphaThresholdSlotId,
+                StyleScaleSlotId,
+                RimWidthSlotId,
+                SpecularSizeSlotId,
+                TestColorScaleSlotId,
+                TestColorSlotId,
+                StyleNdotLSlotId,
             }, true);
         }
 

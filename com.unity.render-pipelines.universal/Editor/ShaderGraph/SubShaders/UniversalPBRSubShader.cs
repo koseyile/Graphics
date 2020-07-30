@@ -44,7 +44,13 @@ namespace UnityEditor.Rendering.Universal
                 PBRMasterNode.SmoothnessSlotId,
                 PBRMasterNode.OcclusionSlotId,
                 PBRMasterNode.AlphaSlotId,
-                PBRMasterNode.AlphaThresholdSlotId
+                PBRMasterNode.AlphaThresholdSlotId,
+                PBRMasterNode.StyleScaleSlotId,
+                PBRMasterNode.RimWidthSlotId,
+                PBRMasterNode.SpecularSizeSlotId,
+                PBRMasterNode.TestColorScaleSlotId,
+                PBRMasterNode.TestColorSlotId,
+                PBRMasterNode.StyleNdotLSlotId
             },
 
             // Required fields
@@ -413,6 +419,9 @@ namespace UnityEditor.Rendering.Universal
 
             if (masterNode.model == PBRMasterNode.Model.Specular)
                 baseActiveFields.Add("SpecularSetup");
+
+            if (masterNode.pbrStyle == PBRStyle.Toon)
+                baseActiveFields.Add("ToonStyle");
 
             if (masterNode.IsSlotConnected(PBRMasterNode.NormalSlotId))
             {

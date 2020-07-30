@@ -46,6 +46,15 @@ namespace UnityEditor.ShaderGraph.Drawing
                     });
                 });
 
+            ps.Add(new PropertyRow(new Label("Style")), (row) =>
+            {
+                row.Add(new EnumField(PBRStyle.Photorealistic), (field) =>
+                {
+                    field.value = m_Node.pbrStyle;
+                    field.RegisterValueChangedCallback(ChangePBRStyle);
+                });
+            });
+
             ps.Add(new PropertyRow(new Label("Fragment Normal Space")), (row) =>
             {
                 row.Add(new EnumField(NormalDropOffSpace.Tangent), (field) =>
@@ -93,6 +102,15 @@ namespace UnityEditor.ShaderGraph.Drawing
 
             m_Node.owner.owner.RegisterCompleteObjectUndo("Alpha Mode Change");
             m_Node.alphaMode = (AlphaMode)evt.newValue;
+        }
+
+        void ChangePBRStyle(ChangeEvent<Enum> evt)
+        {
+            if (Equals(m_Node.pbrStyle, evt.newValue))
+                return;
+
+            m_Node.owner.owner.RegisterCompleteObjectUndo("PBR Style Change");
+            m_Node.pbrStyle = (PBRStyle)evt.newValue;
         }
 
         void ChangeSpaceOfNormalDropOffMode(ChangeEvent<Enum> evt)
