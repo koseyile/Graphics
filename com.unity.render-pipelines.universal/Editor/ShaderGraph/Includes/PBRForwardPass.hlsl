@@ -1,4 +1,4 @@
-﻿void BuildInputData(Varyings input, float3 normal, out InputData inputData)
+void BuildInputData(Varyings input, float3 normal, out InputData inputData)
 {
     inputData.positionWS = input.positionWS;
 #ifdef _NORMALMAP
@@ -66,15 +66,47 @@ half4 frag(PackedVaryings packedInput) : SV_TARGET
         float metallic = surfaceDescription.Metallic;
     #endif
 
+#ifdef _ToonStyle 
+    half4 color = UniversalFragmentStylePBR(
+            inputData,
+            surfaceDescription.Albedo,
+            metallic,
+            specular,
+            surfaceDescription.Smoothness,
+            surfaceDescription.Occlusion,
+            surfaceDescription.Emission,
+            surfaceDescription.Alpha,
+            surfaceDescription.StyleScale,
+            surfaceDescription.StyleNdotL);
+#else
     half4 color = UniversalFragmentPBR(
-			inputData,
-			surfaceDescription.Albedo,
-			metallic,
-			specular,
-			surfaceDescription.Smoothness,
-			surfaceDescription.Occlusion,
-			surfaceDescription.Emission,
-			surfaceDescription.Alpha);
+            inputData,
+            surfaceDescription.Albedo,
+            metallic,
+            specular,
+            surfaceDescription.Smoothness,
+            surfaceDescription.Occlusion,
+            surfaceDescription.Emission,
+            surfaceDescription.Alpha);
+#endif
+
+
+    //#ifdef _ToonStyle
+    //Light mainLight = GetMainLight(inputData.shadowCoord);
+    //half NdotL = saturate(dot(inputData.normalWS, mainLight.direction));
+    ////NdotL = smoothstep(0, 0.01, NdotL); 
+
+    //half3 rimDot = 1 - dot(inputData.viewDirectionWS, inputData.normalWS);
+    //half rimIntensity = rimDot*pow(NdotL, 0.1);
+    //half rimW = surfaceDescription.RimWidth;	
+    //rimIntensity = smoothstep(rimW - 0.01, rimW+0.01, rimIntensity);
+    //half3 rim = rimIntensity * mainLight.color;
+    //color.rgb += rim;
+    //#endif
+
+#ifdef _ToonStyle
+    color.rgb = lerp(color.rgb, surfaceDescription.TestColor, surfaceDescription.TestColorScale);
+#endif
 
     color.rgb = MixFog(color.rgb, inputData.fogCoord);
     return color;
