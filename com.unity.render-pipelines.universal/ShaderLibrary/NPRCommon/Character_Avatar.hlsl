@@ -251,7 +251,7 @@ void ApplyMatcap(Varyings varying, out half3 color)
     half3 normal = UnpackNormal(tex2D(_MatcapNormalMap, uv));
     normal = TangentToWorldNormal(normal, varying.tspace0, varying.tspace1, varying.tspace2);
     //float3x3 tangentTransform = float3x3(i.tangentDir, i.bitangentDir, i.normalDir);
-    normal = mul(UNITY_MATRIX_IT_MV, normal);
+    normal = mul(UNITY_MATRIX_V, normal);
     //float3 viewNormal = (mul(UNITY_MATRIX_V, float4(lerp(i.normalDir, mul(normal, tangentTransform).rgb, _Is_NormalMapForMatCap), 0))).rgb;
     normal = normalize(normal);
     varying.matcapUV.xy = normal.xy * 0.5f + 0.5f;
@@ -335,13 +335,18 @@ half4 frag(Varyings varying) : COLOR
 #endif
     // 无方向的light probe的全局光只作用于暗部
     half3 GI = SampleSH(half3(0, 0, 0));
-#ifdef _ADDITIONAL_LIGHTS
+
     half3 lightColor = (half3)0;
+#ifdef _ADDITIONAL_LIGHTS
     uint pixelLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
     {
         Light light = GetAdditionalLight(lightIndex, varying.posWS);
-        lightColor += light.color * light.distanceAttenuation / PI;
+        lightColor += light.color * light.distanceAttenuation / PI * 0.3f;
+//#if defined(RIM_GLOW_WITH_LIGHT) && defined(RIM_GLOW)
+//        half factor = diffuse_factor(varying.normal, light.direction);
+//        baseTexColor.rgb = rgFragWithLight(baseTexColor.rgb, lightColor, normalize(varying.normal), normalize(_WorldSpaceCameraPos.xyz - varying.posWS), factor, _LightArea);
+//#endif
     }
     baseTexColor += lightColor;
 #endif
@@ -396,8 +401,19 @@ half4 frag(Varyings varying) : COLOR
     // 在一些有平面的物体，当平面法线和视线接近垂直的时候，会导致整个平面都有边缘光。
     // 这会让一些不该有边缘光的地方出现边缘光。为了解决这个问题，在《GUILTY GEAR Xrd》中使用边缘光的Mask贴图来对边缘光区域进行调整。
 #ifdef RIM_GLOW
+#if defined(_ADDITIONAL_LIGHTS) && defined(RIM_GLOW_WITH_LIGHT)
+    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+    {
+        Light light = GetAdditionalLight(lightIndex, varying.posWS);
+        half3 lightColor = light.color * light.distanceAttenuation;
+        half factor = diffuse_factor(varying.normal, light.direction);
+        outColor.rgb = rgFragWithLight(outColor.rgb, lightColor, N, V, factor, _LightArea);
+    }
+#else
     //outColor.rgb = rgFrag(outColor.rgb, N, V);
     outColor.rgb = rgFragEx(outColor.rgb, N, V, varying.diff.x, _LightArea);
+#endif
+    
 #endif
 
 #ifdef ENABLE_MATCAP
@@ -409,6 +425,8 @@ half4 frag(Varyings varying) : COLOR
     //half shadow = SHADOW_ATTENUATION(varying);
     //outColor.rgb *= mainLight.shadowAttenuation;
     //outColor.r = varying.shadowCoord;
+
+    //outColor.rgb = lightColor;
 
     // 根据_DitherAlpha的值来做棋盘格式渐隐渐出
     if (_UsingDitherAlpha)

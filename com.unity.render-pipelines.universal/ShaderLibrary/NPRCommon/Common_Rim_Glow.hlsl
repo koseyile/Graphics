@@ -9,6 +9,7 @@ uniform float _RGShininess;
 uniform float _RGScale;
 uniform float _RGBias;
 uniform float _RGRatio;
+uniform float _RGSmooth;
 uniform float _RGBloomFactor;
 uniform int _RGBlendType;
 
@@ -38,12 +39,20 @@ half3 rgFragEx(in half3 srcColor, in float3 N, in float3 V, half facter, half li
 {
     half f = fresnel(N, V);
     half3 rgColor = _RGColor;
-    // return rgColor + srcColor - rgColor * srcColor;
-    // return rgColor;
-    // return lerp(srcColor, rgColor, _RGRatio);
-    return lerp(srcColor, rgColor, clamp(f, 0, 1) * _RGRatio * (1 - step(facter, lightArea)));
-    //return rgColor;
-    //return lerp(srcColor, rgColor, step(clamp(f, 0, 1), _RGRatio));
+
+    //return lerp(srcColor, rgColor, saturate(f) * _RGRatio * (1 - step(facter, lightArea)));
+    half rim = smoothstep(0, _RGSmooth, saturate(f));
+    return lerp(srcColor, rgColor, _RGRatio * rim * (1 - step(facter, lightArea)));
+}
+
+half3 rgFragWithLight(in half3 srcColor, in half3 lightColor, in float3 N, in float3 V, half facter, half lightArea)
+{
+    half f = fresnel(N, V);
+    half3 rgColor = srcColor + lightColor;
+
+    //return lerp(srcColor, rgColor, saturate(f) * _RGRatio * (1 - step(facter, lightArea)));
+    half rim = smoothstep(0, _RGSmooth, saturate(f));
+    return lerp(srcColor, rgColor, _RGRatio * rim * (1 - step(facter, lightArea)));
 }
 
 //Fragment Shader
