@@ -45,14 +45,24 @@ half3 rgFragEx(in half3 srcColor, in float3 N, in float3 V, half facter, half li
     return lerp(srcColor, rgColor, _RGRatio * rim * (1 - step(facter, lightArea)));
 }
 
-half3 rgFragWithLight(in half3 srcColor, in half3 lightColor, in float3 N, in float3 V, half facter, half lightArea)
+half4 rgFragWithLight(in half4 srcColor,
+    in half3 lightColor,
+    in float3 N,
+    in float3 V,
+    in half factor,
+    in half lightArea,
+    in half bloomFactor)
 {
     half f = fresnel(N, V);
     half3 rgColor = srcColor + lightColor;
 
     //return lerp(srcColor, rgColor, saturate(f) * _RGRatio * (1 - step(facter, lightArea)));
     half rim = smoothstep(0, _RGSmooth, saturate(f));
-    return lerp(srcColor, rgColor, _RGRatio * rim * (1 - step(facter, lightArea)));
+    half weight = _RGRatio * rim * (1 - step(factor, lightArea));
+    half4 color;
+    color.rgb = lerp(srcColor, rgColor, weight);
+    color.a = lerp(bloomFactor, Max3(rgColor.r, rgColor.g, rgColor.b), weight);
+    return color;
 }
 
 //Fragment Shader

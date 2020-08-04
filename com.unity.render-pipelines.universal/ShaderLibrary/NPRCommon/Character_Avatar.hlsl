@@ -16,7 +16,9 @@ half3 _FirstShadowMultColor;
 half3 _SecondShadowMultColor;
 half _ShadowFeather;
 half _ShadowFeatherCenter;
-
+#ifdef _ADDITIONAL_LIGHTS
+half _AdditionalLightFactor;
+#endif
 half _Shininess;
 half _SpecMulti;
 
@@ -338,17 +340,20 @@ half4 frag(Varyings varying) : COLOR
 
     half3 lightColor = (half3)0;
 #ifdef _ADDITIONAL_LIGHTS
-    uint pixelLightCount = GetAdditionalLightsCount();
-    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+    if (_AdditionalLightFactor > 0.001f)
     {
-        Light light = GetAdditionalLight(lightIndex, varying.posWS);
-        lightColor += light.color * light.distanceAttenuation / PI * 0.3f;
-//#if defined(RIM_GLOW_WITH_LIGHT) && defined(RIM_GLOW)
-//        half factor = diffuse_factor(varying.normal, light.direction);
-//        baseTexColor.rgb = rgFragWithLight(baseTexColor.rgb, lightColor, normalize(varying.normal), normalize(_WorldSpaceCameraPos.xyz - varying.posWS), factor, _LightArea);
-//#endif
+        uint pixelLightCount = GetAdditionalLightsCount();
+        for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+        {
+            Light light = GetAdditionalLight(lightIndex, varying.posWS);
+            lightColor += light.color * light.distanceAttenuation / PI * _AdditionalLightFactor;
+            //#if defined(RIM_GLOW_WITH_LIGHT) && defined(RIM_GLOW)
+            //        half factor = diffuse_factor(varying.normal, light.direction);
+            //        baseTexColor.rgb = rgFragWithLight(baseTexColor.rgb, lightColor, normalize(varying.normal), normalize(_WorldSpaceCameraPos.xyz - varying.posWS), factor, _LightArea);
+            //#endif
+        }
+        baseTexColor += lightColor;
     }
-    baseTexColor += lightColor;
 #endif
 
     half diff = 0.0f;
@@ -402,12 +407,13 @@ half4 frag(Varyings varying) : COLOR
     // 这会让一些不该有边缘光的地方出现边缘光。为了解决这个问题，在《GUILTY GEAR Xrd》中使用边缘光的Mask贴图来对边缘光区域进行调整。
 #ifdef RIM_GLOW
 #if defined(_ADDITIONAL_LIGHTS) && defined(RIM_GLOW_WITH_LIGHT)
+    uint pixelLightCount = GetAdditionalLightsCount();
     for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
     {
         Light light = GetAdditionalLight(lightIndex, varying.posWS);
         half3 lightColor = light.color * light.distanceAttenuation;
         half factor = diffuse_factor(varying.normal, light.direction);
-        outColor.rgb = rgFragWithLight(outColor.rgb, lightColor, N, V, factor, _LightArea);
+        outColor = rgFragWithLight(outColor, lightColor, N, V, factor, _LightArea, _BloomFactor);
     }
 #else
     //outColor.rgb = rgFrag(outColor.rgb, N, V);

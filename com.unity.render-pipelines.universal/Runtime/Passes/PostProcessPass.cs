@@ -80,9 +80,9 @@ namespace UnityEngine.Rendering.Universal.Internal
             m_BlitMaterial = blitMaterial;
 
             // Texture format pre-lookup
-            if (SystemInfo.IsFormatSupported(GraphicsFormat.B10G11R11_UFloatPack32, FormatUsage.Linear | FormatUsage.Render))
+            if (SystemInfo.IsFormatSupported(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Linear | FormatUsage.Render))
             {
-                m_DefaultHDRFormat = GraphicsFormat.B10G11R11_UFloatPack32;
+                m_DefaultHDRFormat = GraphicsFormat.R16G16B16A16_SFloat;
                 m_UseRGBM = false;
             }
             else

@@ -608,7 +608,8 @@ namespace UnityEngine.Rendering.Universal
             cameraData.defaultOpaqueSortFlags = canSkipFrontToBackSorting ? noFrontToBackOpaqueFlags : commonOpaqueFlags;
             cameraData.captureActions = CameraCaptureBridge.GetCaptureActions(baseCamera);
 
-            bool needsAlphaChannel = Graphics.preserveFramebufferAlpha;
+            //bool needsAlphaChannel = Graphics.preserveFramebufferAlpha;
+            bool needsAlphaChannel = true;
             cameraData.cameraTargetDescriptor = CreateRenderTextureDescriptor(baseCamera, cameraData.renderScale,
                 cameraData.isStereoEnabled, cameraData.isHdrEnabled, msaaSamples, needsAlphaChannel);
         }
