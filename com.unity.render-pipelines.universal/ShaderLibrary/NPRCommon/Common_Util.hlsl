@@ -166,6 +166,12 @@ half3 hsv_to_rgb(half3 HSV)
     return (RGB);
 }
 
+half3 RampBaseColor(half3 color, half weight)
+{
+    half3 rampColor = 3.4475 * color * color * color - 2.7866 * color * color + 1.2281 * color - 0.0056;
+    return lerp(color, rampColor, weight);
+}
+
 // TBN matrix
 // NOTE: need store bitangent sign in wTangent.w
 inline void calcTBNMatrix(in half3 normal, in half4 tangent, out half3 tspace0, out half3 tspace1, out half3 tspace2)

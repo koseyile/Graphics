@@ -28,6 +28,7 @@ half _Opaqueness;
 
 half4 _LightColor0;
 half _BloomFactor;
+half _RevertTonemapping;
 
 half _FadeDistance;
 half _FadeOffset;
@@ -330,6 +331,7 @@ half4 frag(Varyings varying) : COLOR
     half3 tex_Light_Color = tex2DRGB(_LightMapTex, mainUV).rgb;
 
     half3 baseTexColor = tex2D(_MainTex, mainUV).rgb;
+    baseTexColor = RampBaseColor(baseTexColor, _RevertTonemapping);
 #ifdef RECEIVE_SHADOW
     Light mainLight = GetMainLight(varying.shadowCoord);
 #else
@@ -337,6 +339,7 @@ half4 frag(Varyings varying) : COLOR
 #endif
     // 无方向的light probe的全局光只作用于暗部
     half3 GI = SampleSH(half3(0, 0, 0));
+    //GI *= PI * PI;
 
     half3 lightColor = (half3)0;
 #ifdef _ADDITIONAL_LIGHTS

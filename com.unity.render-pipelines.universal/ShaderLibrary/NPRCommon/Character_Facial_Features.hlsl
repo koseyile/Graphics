@@ -52,6 +52,7 @@ v2f vert(appdata in_data)
 float4 frag(v2f in_data) : COLOR
 {
     half4 outColor = tex2D(_MainTex, in_data.uv_MainTex);
+    outColor.rgb = RampBaseColor(outColor.rgb, 1.0f);
     outColor.rgb = outColor.rgb*_BaseColor.rgb*_EmissionFactor;
     //applyLightProb(outColor.rgb);
 
@@ -80,6 +81,7 @@ v2f vertHSV(appdata in_data)
 float4 fragHSV(v2f in_data) : COLOR
 {
     half4 outColor = tex2D(_MainTex, in_data.uv_MainTex);
+    outColor.rgb = RampBaseColor(outColor.rgb, 0.0f);
     // 色相调整
     half3 hsv = rgb_to_hsv_no_clip(outColor.rgb);
     // 计算纹理的颜色与给定的调色板的颜色的tolerance
@@ -87,7 +89,7 @@ float4 fragHSV(v2f in_data) : COLOR
     half3 hsvDst = half3(frac(hsv.x + _HueOffset),
         saturate(hsv.y + _SaturationOffset),
         saturate(hsv.z + _ValueOffset));
-    // 如果上面计算的dist(tolerance)小于阀值，则使用偏移过得hsvDst
+    // 如果上面计算的dist(tolerance)小于阈值，则使用偏移过得hsvDst
     hsvDst = lerp(hsvDst, hsv, step(_ColorTolerance, dist));
     outColor.rgb = hsv_to_rgb(hsvDst);
 
@@ -104,6 +106,7 @@ float4 fragHSVAlphaTest(v2f in_data) : COLOR
 {
     half4 outColor = tex2D(_MainTex, in_data.uv_MainTex);
     clip(outColor.a - 0.5f);
+    outColor.rgb = RampBaseColor(outColor.rgb, 1.0f);
 
     // 色相调整
     half3 hsv = rgb_to_hsv_no_clip(outColor.rgb);
