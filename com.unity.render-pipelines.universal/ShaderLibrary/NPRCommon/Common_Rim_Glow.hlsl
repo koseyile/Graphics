@@ -61,7 +61,7 @@ half4 rgFragWithLight(in half4 srcColor,
     half weight = _RGRatio * rim * (1 - step(factor, lightArea));
     half4 color;
     color.rgb = lerp(srcColor, rgColor, weight);
-    color.a = lerp(bloomFactor, Max3(rgColor.r, rgColor.g, rgColor.b), weight);
+    color.a = lerp(bloomFactor, _RGBloomFactor, weight);
     return color;
 }
 

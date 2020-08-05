@@ -22,7 +22,9 @@ namespace UnityEngine.Rendering.Universal
         CopyDepthPass m_CopyDepthPass;
         CopyColorPass m_CopyColorPass;
         TransparentSettingsPass m_TransparentSettingsPass;
-        DrawObjectsPass m_RenderTransparentForwardPass;
+        DrawTransparentObjectsPass m_RenderTransparentForwardPass;
+        DrawTransparentObjectsPass m_RenderTransparentForwardPassOnlyAlpha;
+        DrawTransparentObjectsPass m_RenderTransparentForwardPassAdditive;
         InvokeOnRenderObjectCallbackPass m_OnRenderObjectCallbackPass;
         PostProcessPass m_PostProcessPass;
         PostProcessPass m_FinalPostProcessPass;
@@ -82,7 +84,9 @@ namespace UnityEngine.Rendering.Universal
             m_DrawSkyboxPass = new DrawSkyboxPass(RenderPassEvent.BeforeRenderingSkybox);
             m_CopyColorPass = new CopyColorPass(RenderPassEvent.BeforeRenderingTransparents, m_SamplingMaterial);
             m_TransparentSettingsPass = new TransparentSettingsPass(RenderPassEvent.BeforeRenderingTransparents, data.shadowTransparentReceive);
-            m_RenderTransparentForwardPass = new DrawObjectsPass("Render Transparents", false, RenderPassEvent.BeforeRenderingTransparents, RenderQueueRange.transparent, data.transparentLayerMask, m_DefaultStencilState, stencilData.stencilReference);
+            m_RenderTransparentForwardPass = new DrawTransparentObjectsPass("Render Transparents First Pass", false, false, RenderPassEvent.BeforeRenderingTransparents, RenderQueueRange.transparent, data.transparentLayerMask, m_DefaultStencilState, stencilData.stencilReference);
+            m_RenderTransparentForwardPassOnlyAlpha = new DrawTransparentObjectsPass("Render Transparents Second Pass", true, false, RenderPassEvent.AfterRenderingTransparents, RenderQueueRange.transparent, data.transparentLayerMask, m_DefaultStencilState, stencilData.stencilReference);
+            m_RenderTransparentForwardPassAdditive = new DrawTransparentObjectsPass("Render Transparents Additive", false, true, RenderPassEvent.AfterRenderingTransparents, RenderQueueRange.transparent, data.transparentLayerMask, m_DefaultStencilState, stencilData.stencilReference);
             m_OnRenderObjectCallbackPass = new InvokeOnRenderObjectCallbackPass(RenderPassEvent.BeforeRenderingPostProcessing);
             m_PostProcessPass = new PostProcessPass(RenderPassEvent.BeforeRenderingPostProcessing, data.postProcessData, m_BlitMaterial);
             m_FinalPostProcessPass = new PostProcessPass(RenderPassEvent.AfterRendering + 1, data.postProcessData, m_BlitMaterial);
@@ -148,6 +152,8 @@ namespace UnityEngine.Rendering.Universal
                 EnqueuePass(m_RenderOutlinePass);
                 EnqueuePass(m_DrawSkyboxPass);
                 EnqueuePass(m_RenderTransparentForwardPass);
+                EnqueuePass(m_RenderTransparentForwardPassOnlyAlpha);
+                EnqueuePass(m_RenderTransparentForwardPassAdditive);
                 return;
             }
 
@@ -314,6 +320,8 @@ namespace UnityEngine.Rendering.Universal
             }
 
             EnqueuePass(m_RenderTransparentForwardPass);
+            EnqueuePass(m_RenderTransparentForwardPassOnlyAlpha);
+            EnqueuePass(m_RenderTransparentForwardPassAdditive);
             EnqueuePass(m_OnRenderObjectCallbackPass);
 
             bool lastCameraInTheStack = cameraData.resolveFinalTarget;

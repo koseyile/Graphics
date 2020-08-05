@@ -139,6 +139,49 @@ half4 LitPassFragment(Varyings input) : SV_Target
     
     color.rgb = MixFog(color.rgb, inputData.fogCoord);
     color.a = OutputAlpha(color.a);
+    color.a = Max3(color.r, color.g, color.b);
+
+    return color;
+}
+
+// Used in Standard (Physically Based) shader
+half4 LitPassFragmentTransparent(Varyings input) : SV_Target
+{
+    UNITY_SETUP_INSTANCE_ID(input);
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+    SurfaceData surfaceData;
+    InitializeStandardLitSurfaceData(input.uv, surfaceData);
+
+    InputData inputData;
+    InitializeInputData(input, surfaceData.normalTS, inputData);
+
+    half4 color = UniversalFragmentPBR(inputData, surfaceData.albedo, surfaceData.metallic, surfaceData.specular, surfaceData.smoothness, surfaceData.occlusion, surfaceData.emission, surfaceData.alpha);
+
+    color.rgb = MixFog(color.rgb, inputData.fogCoord);
+    //color.a = OutputAlpha(color.a);
+    //color.a = Max3(color.r, color.g, color.b);
+
+    return color;
+}
+
+// Used in Standard (Physically Based) shader
+half4 LitPassFragmentTransparentOnlyAlpha(Varyings input) : SV_Target
+{
+    UNITY_SETUP_INSTANCE_ID(input);
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+    SurfaceData surfaceData;
+    InitializeStandardLitSurfaceData(input.uv, surfaceData);
+
+    InputData inputData;
+    InitializeInputData(input, surfaceData.normalTS, inputData);
+
+    half4 color = UniversalFragmentPBR(inputData, surfaceData.albedo, surfaceData.metallic, surfaceData.specular, surfaceData.smoothness, surfaceData.occlusion, surfaceData.emission, surfaceData.alpha);
+    color.rgb = MixFog(color.rgb, inputData.fogCoord);
+    //color.a = OutputAlpha(color.a);
+    half bloomFactor = Max3(color.r, color.g, color.b);
+    color.a *= bloomFactor;
 
     return color;
 }

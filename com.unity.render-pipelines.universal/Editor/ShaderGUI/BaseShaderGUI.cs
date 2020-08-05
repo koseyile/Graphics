@@ -12,7 +12,8 @@ namespace UnityEditor
         public enum SurfaceType
         {
             Opaque,
-            Transparent
+            Transparent,
+            TransparentAdditive,
         }
 
         public enum BlendMode
@@ -443,6 +444,18 @@ namespace UnityEditor
                     material.SetInt("_ZWrite", 1);
                     material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
                     material.SetShaderPassEnabled("ShadowCaster", true);
+                }
+                else if (surfaceType == SurfaceType.TransparentAdditive)
+                {
+//                     material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+//                     material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                    material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+
+                    material.SetOverrideTag("RenderType", "Transparent");
+                    material.SetInt("_ZWrite", 0);
+                    material.renderQueue = (int)RenderQueue.Transparent + 1;
+                    material.renderQueue += material.HasProperty("_QueueOffset") ? (int)material.GetFloat("_QueueOffset") : 0;
+                    material.SetShaderPassEnabled("ShadowCaster", false);
                 }
                 else
                 {
