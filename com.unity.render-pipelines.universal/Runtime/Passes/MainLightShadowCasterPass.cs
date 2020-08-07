@@ -29,6 +29,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         int m_ShadowmapHeight;
         int m_ShadowCasterCascadesCount;
         bool m_SupportsBoxFilterForShadows;
+        public bool NeedRenderCustomShadow { get; set; }
 
         RenderTargetHandle m_MainLightShadowmap;
         RenderTexture m_MainLightShadowmapTexture;
@@ -211,7 +212,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             float softShadowsProp = softShadows ? 1.0f : 0.0f;
             cmd.SetGlobalTexture(m_MainLightShadowmap.id, m_MainLightShadowmapTexture);
             cmd.SetGlobalMatrixArray(MainLightShadowConstantBuffer._WorldToShadow, m_MainLightShadowMatrices);
-            cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(light.shadowStrength, softShadowsProp, 0.0f, 0.0f));
+            cmd.SetGlobalVector(MainLightShadowConstantBuffer._ShadowParams, new Vector4(light.shadowStrength, softShadowsProp, NeedRenderCustomShadow?1.0f:0.0f, 0.0f));
 
             if (m_ShadowCasterCascadesCount > 1)
             {

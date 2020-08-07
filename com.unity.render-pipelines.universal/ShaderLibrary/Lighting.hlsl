@@ -111,10 +111,10 @@ Light GetMainLight()
     return light;
 }
 
-Light GetMainLight(float4 shadowCoord)
+Light GetMainLight(float4 shadowCoord, float3 positionWS)
 {
     Light light = GetMainLight();
-    light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
+    light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord) * CustomRealtimeShadow(positionWS);
     return light;
 }
 
@@ -613,7 +613,7 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
     BRDFData brdfData;
     InitializeBRDFData(albedo, metallic, specular, smoothness, alpha, brdfData);
     
-    Light mainLight = GetMainLight(inputData.shadowCoord);
+    Light mainLight = GetMainLight(inputData.shadowCoord, inputData.positionWS);
     MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI, half4(0, 0, 0, 0));
 
     half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
@@ -642,7 +642,7 @@ half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic
     BRDFData brdfData;
     InitializeBRDFData(albedo, metallic, specular, smoothness, alpha, brdfData);
 
-    Light mainLight = GetMainLight(inputData.shadowCoord);
+    Light mainLight = GetMainLight(inputData.shadowCoord, inputData.positionWS);
     MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI, half4(0, 0, 0, 0));
 
     half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
@@ -669,7 +669,7 @@ half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic
 
 half4 UniversalFragmentBlinnPhong(InputData inputData, half3 diffuse, half4 specularGloss, half smoothness, half3 emission, half alpha)
 {
-    Light mainLight = GetMainLight(inputData.shadowCoord);
+    Light mainLight = GetMainLight(inputData.shadowCoord, inputData.positionWS);
     MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI, half4(0, 0, 0, 0));
 
     half3 attenuatedLightColor = mainLight.color * (mainLight.distanceAttenuation * mainLight.shadowAttenuation);

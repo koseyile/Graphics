@@ -333,7 +333,7 @@ half4 frag(Varyings varying) : COLOR
     half3 baseTexColor = tex2D(_MainTex, mainUV).rgb;
     baseTexColor = RampBaseColor(baseTexColor, _RevertTonemapping);
 #ifdef RECEIVE_SHADOW
-    Light mainLight = GetMainLight(varying.shadowCoord);
+    Light mainLight = GetMainLight(varying.shadowCoord, varying.posWS);
 #else
     Light mainLight = GetMainLight();
 #endif

@@ -59,6 +59,190 @@ namespace UnityEngine.Rendering.Universal
             return success;
         }
 
+        static void CalculateSphereFrom4Points(Vector3[] points, out Vector3 outCenter, out float outRadius)
+        {
+            Matrix4x4 mat = new Matrix4x4();
+            for (int i = 0; i< 4; ++i)
+            {
+                mat.SetRow(i, new Vector4(points[i].x, points[i].y, points[i].z, 1f));
+            }
+            float m11 = mat.determinant;
+
+            for (int i = 0; i< 4; ++i)
+            {
+                mat.SetRow(i, new Vector4(
+                    points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z,
+                    points[i].y,
+                    points[i].z,
+                    1f));
+            }
+            float m12 = mat.determinant;
+
+            for (int i = 0; i< 4; ++i)
+            {
+                mat.SetRow(i, new Vector4(points[i].x,
+                    points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z,
+                    points[i].z,
+                    1f));
+            }
+            float m13 = mat.determinant;
+
+            for (int i = 0; i< 4; ++i)
+            {
+                mat.SetRow(i, new Vector4(points[i].x,
+                    points[i].y,
+                    points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z,
+                    1f));
+            }
+            float m14 = mat.determinant;
+
+            for (int i = 0; i< 4; ++i)
+            {
+                mat.SetRow(i, new Vector4(points[i].x * points[i].x + points[i].y * points[i].y + points[i].z * points[i].z,
+                    points[i].x,
+                    points[i].y,
+                    points[i].z));
+            }
+            float m15 = mat.determinant;
+
+            Vector3 c = new Vector3();
+            c.x = 0.5f * m12 / m11;
+            c.y = 0.5f * m13 / m11;
+            c.z = 0.5f * m14 / m11;
+            outRadius = Mathf.Sqrt(c.x* c.x + c.y* c.y + c.z* c.z - m15 / m11);
+            outCenter = c;
+        }
+
+        public static void CalcualteDirectionalLightMatrix(Bounds casterBounds,
+            Light light,
+            Camera camera,
+            int shadowmapWidth,
+            int shadowmapHeight,
+            out Matrix4x4 viewMatrix,
+            out Matrix4x4 projMatrix)
+        {
+            Vector3 center = casterBounds.center;
+            float castersRadius = casterBounds.extents.magnitude;
+            Matrix4x4 worldMat = light.transform.localToWorldMatrix;
+            Vector3 axisX = worldMat.GetColumn(0);
+            Vector3 axisY = worldMat.GetColumn(1);
+            Vector3 axisZ = worldMat.GetColumn(2);
+            Vector3 initialLightPos = center - axisZ * castersRadius * 1.2f;
+            Matrix4x4 lightMatrix = new Matrix4x4();
+            lightMatrix.SetColumn(0, new Vector4(axisX.x, axisX.y, axisX.z, 0f));
+            lightMatrix.SetColumn(1, new Vector4(axisY.x, axisY.y, axisY.z, 0f));
+            lightMatrix.SetColumn(2, new Vector4(axisZ.x, axisZ.y, axisZ.z, 0f));
+            lightMatrix.SetColumn(3, new Vector4(initialLightPos.x, initialLightPos.y, initialLightPos.z, 1f));
+
+            Matrix4x4 frustomTransform = camera.projectionMatrix * camera.worldToCameraMatrix;
+            frustomTransform = frustomTransform.inverse;
+            Vector3[] cameraFrustum = new Vector3[8];
+            cameraFrustum[0] = frustomTransform.MultiplyPoint(new Vector3(-1, -1, -1));
+            cameraFrustum[1] = frustomTransform.MultiplyPoint(new Vector3(1, -1, -1));
+            cameraFrustum[2] = frustomTransform.MultiplyPoint(new Vector3(1, 1, -1));
+            cameraFrustum[3] = frustomTransform.MultiplyPoint(new Vector3(-1, 1, -1));
+            cameraFrustum[4] = frustomTransform.MultiplyPoint(new Vector3(-1, -1, 1));
+            cameraFrustum[5] = frustomTransform.MultiplyPoint(new Vector3(1, -1, 1));
+            cameraFrustum[6] = frustomTransform.MultiplyPoint(new Vector3(1, 1, 1));
+            cameraFrustum[7] = frustomTransform.MultiplyPoint(new Vector3(-1, 1, 1));
+
+            Vector3[] cameraFrustum2 = new Vector3[4];
+            Vector3[] cameraFrustum3 = new Vector3[4];
+            camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1),
+                camera.nearClipPlane,
+                Camera.MonoOrStereoscopicEye.Mono,
+                cameraFrustum2);
+            camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1),
+                camera.farClipPlane,
+                Camera.MonoOrStereoscopicEye.Mono,
+                cameraFrustum3);
+            cameraFrustum2[0] = camera.transform.TransformPoint(cameraFrustum2[0]);
+            cameraFrustum2[1] = camera.transform.TransformPoint(cameraFrustum2[1]);
+            cameraFrustum2[2] = camera.transform.TransformPoint(cameraFrustum2[2]);
+            cameraFrustum2[3] = camera.transform.TransformPoint(cameraFrustum2[3]);
+            cameraFrustum3[0] = camera.transform.TransformPoint(cameraFrustum3[0]);
+            cameraFrustum3[1] = camera.transform.TransformPoint(cameraFrustum3[1]);
+            cameraFrustum3[2] = camera.transform.TransformPoint(cameraFrustum3[2]);
+            cameraFrustum3[3] = camera.transform.TransformPoint(cameraFrustum3[3]);
+
+            float nearZ = camera.nearClipPlane;
+            float farZ = camera.farClipPlane;
+            float shadowFarZ = 300f;
+            float scaledShadowRange = shadowFarZ - nearZ;
+            float frustumScale = scaledShadowRange / (farZ - nearZ);
+            Vector3[] portion = new Vector3[4];
+            portion[0] = cameraFrustum[0];
+            portion[1] = cameraFrustum[1];
+            portion[2] = Vector3.Lerp(cameraFrustum[1], cameraFrustum[5], frustumScale);
+            portion[3] = Vector3.Lerp(cameraFrustum[3], cameraFrustum[7], frustumScale);
+
+            Vector3 sphereCenter = new Vector3();
+            float radius = 0f;
+            //CalculateSphereFrom4Points(portion, out sphereCenter, out radius);
+            sphereCenter = (portion[0] + portion[1] + portion[2] + portion[3]) / 4;
+            radius = (sphereCenter - portion[0]).magnitude;
+            //sphereCenter = camera.cameraToWorldMatrix.MultiplyPoint(sphereCenter);
+            Vector3 p = lightMatrix.inverse.MultiplyPoint(sphereCenter);
+
+
+
+            Bounds frustomLightLocalBounds = new Bounds();
+            frustomLightLocalBounds.Encapsulate(p);
+            frustomLightLocalBounds.Expand(radius);
+            Vector3 stableLightPosWorld = lightMatrix.MultiplyPoint(frustomLightLocalBounds.center);
+            //Vector3 stableLightPosWorld = initialLightPos;
+            double texelSizeX = frustomLightLocalBounds.size.x / shadowmapWidth;
+            double texelSizeY = frustomLightLocalBounds.size.y / shadowmapHeight;
+            double projX = axisX.x * (double)stableLightPosWorld.x + axisX.y * (double)stableLightPosWorld.y + axisX.z * (double)stableLightPosWorld.z;
+            double projY = axisY.x * (double)stableLightPosWorld.x + axisY.y * (double)stableLightPosWorld.y + axisY.z * (double)stableLightPosWorld.z;
+            float modX = (float)(projX % texelSizeX);
+            float modY = (float)(projY % texelSizeY);
+            stableLightPosWorld -= axisX * modX;
+            stableLightPosWorld -= axisY * modY;
+            const float kShadowProjectionPlaneOffsetFactor = 0.1f;
+            Vector3 halfFrustumBoundsSizeLocal = frustomLightLocalBounds.size * 0.5f;
+            stableLightPosWorld -= axisZ * halfFrustumBoundsSizeLocal.z * (1.0f + 2.0f * kShadowProjectionPlaneOffsetFactor);
+            lightMatrix.SetColumn(3, new Vector4(stableLightPosWorld.x, stableLightPosWorld.y, stableLightPosWorld.z, 1f));
+
+            Vector3 angle = lightMatrix.rotation.eulerAngles;
+            Debug.Log(angle);
+            float nearPlane = halfFrustumBoundsSizeLocal.z * kShadowProjectionPlaneOffsetFactor;
+            float farPlane = halfFrustumBoundsSizeLocal.z * (2.0f + 3.0f * kShadowProjectionPlaneOffsetFactor);
+            //projMatrix = Matrix4x4.Ortho(-halfFrustumBoundsSizeLocal.x, halfFrustumBoundsSizeLocal.x, -halfFrustumBoundsSizeLocal.y, halfFrustumBoundsSizeLocal.y, nearPlane, farPlane);
+            projMatrix = Matrix4x4.Ortho(-5, 5, -5, 5, 0.1f, farPlane);
+
+            viewMatrix = lightMatrix;
+            viewMatrix.SetColumn(2, new Vector4(-axisZ.x, -axisZ.y, -axisZ.z, 0f));
+            viewMatrix = viewMatrix.inverse;
+        }
+
+        public static void CalcualteDirectionalLightMatrixEx(Bounds casterBounds,
+            Light light,
+            Camera camera,
+            int shadowmapWidth,
+            int shadowmapHeight,
+            out Matrix4x4 viewMatrix,
+            out Matrix4x4 projMatrix)
+        {
+            Vector3 center = casterBounds.center;
+            float castersRadius = casterBounds.extents.magnitude;
+            Matrix4x4 worldMat = light.transform.localToWorldMatrix;
+            Vector3 axisX = worldMat.GetColumn(0);
+            Vector3 axisY = worldMat.GetColumn(1);
+            Vector3 axisZ = worldMat.GetColumn(2);
+            Vector3 initialLightPos = center - axisZ * castersRadius * 1.2f;
+            Matrix4x4 lightMatrix = new Matrix4x4();
+            lightMatrix.SetColumn(0, new Vector4(axisX.x, axisX.y, axisX.z, 0f));
+            lightMatrix.SetColumn(1, new Vector4(axisY.x, axisY.y, axisY.z, 0f));
+            lightMatrix.SetColumn(2, new Vector4(axisZ.x, axisZ.y, axisZ.z, 0f));
+            lightMatrix.SetColumn(3, new Vector4(initialLightPos.x, initialLightPos.y, initialLightPos.z, 1f));
+            projMatrix = Matrix4x4.Ortho(-castersRadius, castersRadius, -castersRadius, castersRadius, 0.1f, 100);
+
+            viewMatrix = lightMatrix;
+            viewMatrix.SetColumn(2, new Vector4(-axisZ.x, -axisZ.y, -axisZ.z, 0f));
+            viewMatrix = viewMatrix.inverse;
+        }
+
         public static bool ExtractSpotLightMatrix(ref CullingResults cullResults, ref ShadowData shadowData, int shadowLightIndex, out Matrix4x4 shadowMatrix, out Matrix4x4 viewMatrix, out Matrix4x4 projMatrix)
         {
             ShadowSplitData splitData;
@@ -81,6 +265,25 @@ namespace UnityEngine.Rendering.Universal
             cmd.DisableScissorRect();
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
+        }
+
+        public static void SetupCustomShadow(CommandBuffer cmd,
+            ref ScriptableRenderContext context,
+            Rect shadowmapRerct,
+            Matrix4x4 view,
+            Matrix4x4 proj)
+        {
+            cmd.SetViewport(shadowmapRerct);
+            //cmd.EnableScissorRect(new Rect(shadowSliceData.offsetX + 4, shadowSliceData.offsetY + 4, shadowSliceData.resolution - 8, shadowSliceData.resolution - 8));
+
+            cmd.SetViewProjectionMatrices(view, proj);
+            context.ExecuteCommandBuffer(cmd);
+            cmd.Clear();
+            //context.DrawShadows(ref settings);
+            
+            //cmd.DisableScissorRect();
+            //context.ExecuteCommandBuffer(cmd);
+            //cmd.Clear();
         }
 
         public static void RenderShadowSlice(CommandBuffer cmd, ref ScriptableRenderContext context,
@@ -182,7 +385,7 @@ namespace UnityEngine.Rendering.Universal
             return shadowTexture;
         }
 
-        static Matrix4x4 GetShadowTransform(Matrix4x4 proj, Matrix4x4 view)
+        static public Matrix4x4 GetShadowTransform(Matrix4x4 proj, Matrix4x4 view)
         {
             // Currently CullResults ComputeDirectionalShadowMatricesAndCullingPrimitives doesn't
             // apply z reversal to projection matrix. We need to do it manually here.

@@ -32,6 +32,9 @@ SAMPLER(sampler_ScreenSpaceShadowmapTexture);
 TEXTURE2D_SHADOW(_MainLightShadowmapTexture);
 SAMPLER_CMP(sampler_MainLightShadowmapTexture);
 
+TEXTURE2D_SHADOW(_CustomShadowmapTexture);
+SAMPLER_CMP(sampler_CustomShadowmapTexture);
+
 TEXTURE2D_SHADOW(_AdditionalLightsShadowmapTexture);
 SAMPLER_CMP(sampler_AdditionalLightsShadowmapTexture);
 
@@ -54,6 +57,8 @@ half4       _MainLightShadowOffset2;
 half4       _MainLightShadowOffset3;
 half4       _MainLightShadowParams;  // (x: shadowStrength, y: 1.0 if soft shadows, 0.0 otherwise)
 float4      _MainLightShadowmapSize; // (xy: 1/width and 1/height, zw: width and height)
+float4x4    _CustomWorldToShadow;
+float4      _CustomShadowmapSize;
 #ifndef SHADER_API_GLES3
 CBUFFER_END
 #endif
@@ -235,6 +240,11 @@ float4 TransformWorldToShadowCoord(float3 positionWS)
     return mul(_MainLightWorldToShadow[cascadeIndex], float4(positionWS, 1.0));
 }
 
+float4 TransformWorldToCustomShadowCoord(float3 positionWS)
+{
+    return mul(_CustomWorldToShadow, float4(positionWS, 1.0));
+}
+
 half MainLightRealtimeShadow(float4 shadowCoord)
 {
 #if !defined(MAIN_LIGHT_CALCULATE_SHADOWS)
@@ -245,6 +255,23 @@ half MainLightRealtimeShadow(float4 shadowCoord)
     half4 shadowParams = GetMainLightShadowParams();
     return SampleShadowmap(TEXTURE2D_ARGS(_MainLightShadowmapTexture, sampler_MainLightShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
 }
+
+half CustomRealtimeShadow(float3 positionWS)
+{
+#if !defined(MAIN_LIGHT_CALCULATE_SHADOWS)
+    return 1.0h;
+#endif
+
+    float4 shadowCoord = mul(_CustomWorldToShadow, float4(positionWS, 1.0));
+    ShadowSamplingData shadowSamplingData = GetMainLightShadowSamplingData();
+    shadowSamplingData.shadowmapSize = _CustomShadowmapSize;
+    half4 shadowParams = GetMainLightShadowParams();
+    if (shadowParams.z < 0.5f)
+        return 1.0f;
+
+    return SampleShadowmap(TEXTURE2D_ARGS(_CustomShadowmapTexture, sampler_CustomShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
+}
+
 
 half AdditionalLightRealtimeShadow(int lightIndex, float3 positionWS)
 {
