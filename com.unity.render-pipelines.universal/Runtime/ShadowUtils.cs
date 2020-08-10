@@ -236,6 +236,61 @@ namespace UnityEngine.Rendering.Universal
             lightMatrix.SetColumn(1, new Vector4(axisY.x, axisY.y, axisY.z, 0f));
             lightMatrix.SetColumn(2, new Vector4(axisZ.x, axisZ.y, axisZ.z, 0f));
             lightMatrix.SetColumn(3, new Vector4(initialLightPos.x, initialLightPos.y, initialLightPos.z, 1f));
+
+            Vector3[] cameraFrustum2 = new Vector3[4];
+            Vector3[] cameraFrustum3 = new Vector3[4];
+            camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1),
+                camera.nearClipPlane,
+                Camera.MonoOrStereoscopicEye.Mono,
+                cameraFrustum2);
+            camera.CalculateFrustumCorners(new Rect(0, 0, 1, 1),
+                camera.farClipPlane,
+                Camera.MonoOrStereoscopicEye.Mono,
+                cameraFrustum3);
+            Vector3 frustumCenter = new Vector3();
+            //frustumCenter.x = (cameraFrustum3[0].x + cameraFrustum3[3].x) / 2f;
+            //frustumCenter.y = (cameraFrustum3[0].y + cameraFrustum3[2].y) / 2f;
+            frustumCenter.x = (cameraFrustum2[0].x + cameraFrustum2[3].x) / 2f;
+            frustumCenter.y = (cameraFrustum2[0].y + cameraFrustum2[2].y) / 2f;
+            frustumCenter.z = (cameraFrustum2[0].z + cameraFrustum3[0].z) / 2f;
+            frustumCenter = camera.transform.TransformPoint(frustumCenter);
+
+            cameraFrustum2[0] = camera.transform.TransformPoint(cameraFrustum2[0]);
+            cameraFrustum2[1] = camera.transform.TransformPoint(cameraFrustum2[1]);
+            cameraFrustum2[2] = camera.transform.TransformPoint(cameraFrustum2[2]);
+            cameraFrustum2[3] = camera.transform.TransformPoint(cameraFrustum2[3]);
+            cameraFrustum3[0] = camera.transform.TransformPoint(cameraFrustum3[0]);
+            cameraFrustum3[1] = camera.transform.TransformPoint(cameraFrustum3[1]);
+            cameraFrustum3[2] = camera.transform.TransformPoint(cameraFrustum3[2]);
+            cameraFrustum3[3] = camera.transform.TransformPoint(cameraFrustum3[3]);
+
+            Matrix4x4 frustomTransform = camera.projectionMatrix * camera.worldToCameraMatrix;
+            frustomTransform = frustomTransform.inverse;
+            //Vector3 frustumCenter = frustomTransform.MultiplyPoint(new Vector3(0, 0, 0));
+            //frustumCenter.x = (cameraFrustum3[0].x + cameraFrustum3[1].x) / 2f;
+            //frustumCenter.y = (cameraFrustum3[0].y + cameraFrustum3[2].y) / 2f;
+            //frustumCenter.z = (cameraFrustum2[0].z + cameraFrustum3[0].z) / 2f;
+            Vector3 size = new Vector3();
+            size.x = Mathf.Abs(cameraFrustum2[0].x - frustumCenter.x) * 2f;
+            size.y = Mathf.Abs(cameraFrustum2[0].y - frustumCenter.y) * 2f;
+            size.z = Mathf.Abs(cameraFrustum2[0].z - frustumCenter.z) * 2f;
+            Bounds cameraFrustum = new Bounds(frustumCenter, size);
+            Bounds intersectBounds = casterBounds;
+            Vector3 min = intersectBounds.min;
+            min.x = Mathf.Max(cameraFrustum.min.x, intersectBounds.min.x);
+            min.y = Mathf.Max(cameraFrustum.min.y, intersectBounds.min.y);
+            min.z = Mathf.Max(cameraFrustum.min.z, intersectBounds.min.z);
+            intersectBounds.min = min;
+            Vector3 max = intersectBounds.max;
+            max.x = Mathf.Min(cameraFrustum.max.x, intersectBounds.max.x);
+            max.y = Mathf.Min(cameraFrustum.max.y, intersectBounds.max.y);
+            max.z = Mathf.Min(cameraFrustum.max.z, intersectBounds.max.z);
+            intersectBounds.max = max;
+
+            Vector3 position = intersectBounds.center;
+            position = position - axisZ * castersRadius * 1.2f;
+            lightMatrix.SetColumn(3, new Vector4(position.x, position.y, position.z, 1f));
+            castersRadius = intersectBounds.extents.magnitude;
             projMatrix = Matrix4x4.Ortho(-castersRadius, castersRadius, -castersRadius, castersRadius, 0.1f, 100);
 
             viewMatrix = lightMatrix;
@@ -274,14 +329,14 @@ namespace UnityEngine.Rendering.Universal
             Matrix4x4 proj)
         {
             cmd.SetViewport(shadowmapRerct);
-            //cmd.EnableScissorRect(new Rect(shadowSliceData.offsetX + 4, shadowSliceData.offsetY + 4, shadowSliceData.resolution - 8, shadowSliceData.resolution - 8));
+            cmd.EnableScissorRect(new Rect(4, 4, shadowmapRerct.width - 8, shadowmapRerct.height - 8));
 
             cmd.SetViewProjectionMatrices(view, proj);
             context.ExecuteCommandBuffer(cmd);
             cmd.Clear();
             //context.DrawShadows(ref settings);
             
-            //cmd.DisableScissorRect();
+            
             //context.ExecuteCommandBuffer(cmd);
             //cmd.Clear();
         }

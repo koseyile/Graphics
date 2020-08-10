@@ -22,7 +22,7 @@
     #endif
 #endif
 
-#if defined(_ADDITIONAL_LIGHTS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE)
+#if defined(_ADDITIONAL_LIGHTS) || defined(_MAIN_LIGHT_SHADOWS_CASCADE) || defined(_MAIN_LIGHT_SHADOWS)
     #define REQUIRES_WORLD_SPACE_POS_INTERPOLATOR
 #endif
 
@@ -263,11 +263,12 @@ half CustomRealtimeShadow(float3 positionWS)
 #endif
 
     float4 shadowCoord = mul(_CustomWorldToShadow, float4(positionWS, 1.0));
+    //shadowCoord.z = 0.5;
     ShadowSamplingData shadowSamplingData = GetMainLightShadowSamplingData();
     shadowSamplingData.shadowmapSize = _CustomShadowmapSize;
     half4 shadowParams = GetMainLightShadowParams();
     if (shadowParams.z < 0.5f)
-        return 1.0f;
+        return 1.0h;
 
     return SampleShadowmap(TEXTURE2D_ARGS(_CustomShadowmapTexture, sampler_CustomShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
 }

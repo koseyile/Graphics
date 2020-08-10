@@ -172,6 +172,7 @@ namespace UnityEngine.Rendering.Universal.Internal
                 bool softShadows = shadowLight.light.shadows == LightShadows.Soft && shadowData.supportsSoftShadows;
                 SetupMainLightShadowReceiverConstants(cmd, shadowLight, softShadows);
                 context.DrawRenderers(renderingData.cullResults, ref settings, ref m_FilteringSettings);
+                cmd.DisableScissorRect();
             }
 
             context.ExecuteCommandBuffer(cmd);

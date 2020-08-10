@@ -333,7 +333,12 @@ half4 frag(Varyings varying) : COLOR
     half3 baseTexColor = tex2D(_MainTex, mainUV).rgb;
     baseTexColor = RampBaseColor(baseTexColor, _RevertTonemapping);
 #ifdef RECEIVE_SHADOW
+#ifdef NO_SELF_SHADOW
+    Light mainLight = GetMainLight();
+    mainLight.shadowAttenuation = MainLightRealtimeShadow(varying.shadowCoord);
+#else
     Light mainLight = GetMainLight(varying.shadowCoord, varying.posWS);
+#endif
 #else
     Light mainLight = GetMainLight();
 #endif

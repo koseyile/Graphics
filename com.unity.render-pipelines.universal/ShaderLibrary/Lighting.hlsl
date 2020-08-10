@@ -114,7 +114,10 @@ Light GetMainLight()
 Light GetMainLight(float4 shadowCoord, float3 positionWS)
 {
     Light light = GetMainLight();
-    light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord) * CustomRealtimeShadow(positionWS);
+    light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
+#ifdef REQUIRES_WORLD_SPACE_POS_INTERPOLATOR
+    light.shadowAttenuation *= CustomRealtimeShadow(positionWS);
+#endif
     return light;
 }
 
