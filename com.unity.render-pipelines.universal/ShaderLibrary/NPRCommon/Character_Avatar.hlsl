@@ -24,6 +24,9 @@ half _SpecMulti;
 half _ShadowDarkness;
 half3 _LightSpecColor;
 
+half4 _EmissiveColor;
+sampler2D _EmissiveTex;
+
 half _Opaqueness;
 
 half4 _LightColor0;
@@ -115,6 +118,13 @@ float sigmoid(float x, float center, float sharp)
     float s;
     s = 1 / (1 + pow(100000, (-3 * sharp * (x - center))));
     return s;
+}
+
+half3 Emissive(half2 uv)
+{
+    half3 emissive = tex2D(_EmissiveTex, uv);
+    emissive *= _EmissiveColor.rgb;
+    return emissive;
 }
 
 
@@ -492,7 +502,6 @@ half4 frag(Varyings varying) : COLOR
     //outColor.rgb = rgFrag(outColor.rgb, N, V);
     outColor.rgb = rgFragEx(outColor.rgb, N, V, varying.diff.x, _LightArea);
 #endif
-    
 #endif
 
 #ifdef ENABLE_MATCAP
@@ -501,11 +510,9 @@ half4 frag(Varyings varying) : COLOR
     outColor.rgb += matcapColor;
 #endif
 
-    //half shadow = SHADOW_ATTENUATION(varying);
-    //outColor.rgb *= mainLight.shadowAttenuation;
-    //outColor.r = varying.shadowCoord;
-
-    //outColor.rgb = lightColor;
+#ifdef ENABLE_EMISSIVE
+    outColor.rgb += Emissive(varying.texcoord);
+#endif
 
     // 根据_DitherAlpha的值来做棋盘格式渐隐渐出
     if (_UsingDitherAlpha)
