@@ -59,6 +59,11 @@ half4       _MainLightShadowParams;  // (x: shadowStrength, y: 1.0 if soft shado
 float4      _MainLightShadowmapSize; // (xy: 1/width and 1/height, zw: width and height)
 float4x4    _CustomWorldToShadow;
 float4      _CustomShadowmapSize;
+half4       _CustomShadowOffset0;
+half4       _CustomShadowOffset1;
+half4       _CustomShadowOffset2;
+half4       _CustomShadowOffset3;
+
 #ifndef SHADER_API_GLES3
 CBUFFER_END
 #endif
@@ -109,6 +114,17 @@ ShadowSamplingData GetMainLightShadowSamplingData()
     shadowSamplingData.shadowOffset2 = _MainLightShadowOffset2;
     shadowSamplingData.shadowOffset3 = _MainLightShadowOffset3;
     shadowSamplingData.shadowmapSize = _MainLightShadowmapSize;
+    return shadowSamplingData;
+}
+
+ShadowSamplingData GetCustomShadowSamplingData()
+{
+    ShadowSamplingData shadowSamplingData;
+    shadowSamplingData.shadowOffset0 = _CustomShadowOffset0;
+    shadowSamplingData.shadowOffset1 = _CustomShadowOffset1;
+    shadowSamplingData.shadowOffset2 = _CustomShadowOffset2;
+    shadowSamplingData.shadowOffset3 = _CustomShadowOffset3;
+    shadowSamplingData.shadowmapSize = _CustomShadowmapSize;
     return shadowSamplingData;
 }
 
@@ -263,9 +279,7 @@ half CustomRealtimeShadow(float3 positionWS)
 #endif
 
     float4 shadowCoord = mul(_CustomWorldToShadow, float4(positionWS, 1.0));
-    //shadowCoord.z = 0.5;
-    ShadowSamplingData shadowSamplingData = GetMainLightShadowSamplingData();
-    shadowSamplingData.shadowmapSize = _CustomShadowmapSize;
+    ShadowSamplingData shadowSamplingData = GetCustomShadowSamplingData();
     half4 shadowParams = GetMainLightShadowParams();
     if (shadowParams.z < 0.5f)
         return 1.0h;
