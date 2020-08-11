@@ -248,32 +248,24 @@ namespace UnityEngine.Rendering.Universal
                 Camera.MonoOrStereoscopicEye.Mono,
                 cameraFrustum3);
             Vector3 frustumCenter = new Vector3();
-            //frustumCenter.x = (cameraFrustum3[0].x + cameraFrustum3[3].x) / 2f;
-            //frustumCenter.y = (cameraFrustum3[0].y + cameraFrustum3[2].y) / 2f;
             frustumCenter.x = (cameraFrustum2[0].x + cameraFrustum2[3].x) / 2f;
             frustumCenter.y = (cameraFrustum2[0].y + cameraFrustum2[2].y) / 2f;
             frustumCenter.z = (cameraFrustum2[0].z + cameraFrustum3[0].z) / 2f;
             frustumCenter = camera.transform.TransformPoint(frustumCenter);
-
-            cameraFrustum2[0] = camera.transform.TransformPoint(cameraFrustum2[0]);
-            cameraFrustum2[1] = camera.transform.TransformPoint(cameraFrustum2[1]);
-            cameraFrustum2[2] = camera.transform.TransformPoint(cameraFrustum2[2]);
-            cameraFrustum2[3] = camera.transform.TransformPoint(cameraFrustum2[3]);
-            cameraFrustum3[0] = camera.transform.TransformPoint(cameraFrustum3[0]);
-            cameraFrustum3[1] = camera.transform.TransformPoint(cameraFrustum3[1]);
-            cameraFrustum3[2] = camera.transform.TransformPoint(cameraFrustum3[2]);
-            cameraFrustum3[3] = camera.transform.TransformPoint(cameraFrustum3[3]);
-
-            Matrix4x4 frustomTransform = camera.projectionMatrix * camera.worldToCameraMatrix;
-            frustomTransform = frustomTransform.inverse;
-            //Vector3 frustumCenter = frustomTransform.MultiplyPoint(new Vector3(0, 0, 0));
-            //frustumCenter.x = (cameraFrustum3[0].x + cameraFrustum3[1].x) / 2f;
-            //frustumCenter.y = (cameraFrustum3[0].y + cameraFrustum3[2].y) / 2f;
-            //frustumCenter.z = (cameraFrustum2[0].z + cameraFrustum3[0].z) / 2f;
             Vector3 size = new Vector3();
-            size.x = Mathf.Abs(cameraFrustum2[0].x - frustumCenter.x) * 2f;
-            size.y = Mathf.Abs(cameraFrustum2[0].y - frustumCenter.y) * 2f;
-            size.z = Mathf.Abs(cameraFrustum2[0].z - frustumCenter.z) * 2f;
+            size.x = Mathf.Abs(cameraFrustum3[0].x - frustumCenter.x) * 2f;
+            size.y = Mathf.Abs(cameraFrustum3[0].y - frustumCenter.y) * 2f;
+            size.z = Mathf.Abs(cameraFrustum3[0].z - frustumCenter.z) * 2f;
+
+//             cameraFrustum2[0] = camera.transform.TransformPoint(cameraFrustum2[0]);
+//             cameraFrustum2[1] = camera.transform.TransformPoint(cameraFrustum2[1]);
+//             cameraFrustum2[2] = camera.transform.TransformPoint(cameraFrustum2[2]);
+//             cameraFrustum2[3] = camera.transform.TransformPoint(cameraFrustum2[3]);
+//             cameraFrustum3[0] = camera.transform.TransformPoint(cameraFrustum3[0]);
+//             cameraFrustum3[1] = camera.transform.TransformPoint(cameraFrustum3[1]);
+//             cameraFrustum3[2] = camera.transform.TransformPoint(cameraFrustum3[2]);
+//             cameraFrustum3[3] = camera.transform.TransformPoint(cameraFrustum3[3]);
+            
             Bounds cameraFrustum = new Bounds(frustumCenter, size);
             Bounds intersectBounds = casterBounds;
             Vector3 min = intersectBounds.min;

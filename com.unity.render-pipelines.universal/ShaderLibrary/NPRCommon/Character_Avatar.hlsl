@@ -21,7 +21,7 @@ half _AdditionalLightFactor;
 #endif
 half _Shininess;
 half _SpecMulti;
-
+half _ShadowDarkness;
 half3 _LightSpecColor;
 
 half _Opaqueness;
@@ -168,7 +168,13 @@ half3 complex_toon_diffuse(half factor, half t1, half t2, half3 baseTexColor)
 
 //3阶：light, light shadow(_FirstShadowMultColor), dark shadow(_SecondShadowMultColor)
 // 高光贴图的G通道乘以顶点色的R通道可以控制阴影的区域
-half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor, half3 mainLightColor, half3 GI, half shadowAttenuation)
+half3 ToonDiffuse(half factor,
+    half t1,
+    half t2,
+    half3 baseTexColor,
+    half3 mainLightColor,
+    half3 GI,
+    half shadowAttenuation)
 {
     half3 diffColor = half3(1.0f, 1.0f, 1.0f).rgb;
 
@@ -192,14 +198,60 @@ half3 complex_toon_diffuseEx(half factor, half t1, half t2, half3 baseTexColor, 
         //threshold = smoothstep(_ShadowFeather - threshold, _ShadowFeather + threshold, threshold);
 #ifdef DIFFUSE_RAMP
         half ramp = tex2D(_RampTex, float2(saturate(threshold - _LightArea), 0.5)).r;
-        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp * shadowAttenuation);
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp);
 #else
         half w = sigmoid(threshold, _LightArea, _ShadowFeather);
-        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w * shadowAttenuation);
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w);
 #endif
         //half3 shadowColor = less(threshold, _LightArea) ? _FirstShadowMultColor * GI : _MainLightColor.rgb;
 
+        shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
         diffColor = baseTexColor * shadowColor;
+    }
+    return diffColor;
+}
+
+half3 ToonDiffuseWithAdditionalLights(half factor,
+    half t1,
+    half t2,
+    half3 baseTexColor,
+    half3 mainLightColor,
+    half3 additionalColor,
+    half3 GI,
+    half shadowAttenuation)
+{
+    half3 diffColor = half3(1.0f, 1.0f, 1.0f).rgb;
+
+    half D = t1 * t2;
+    half threshold = 0;
+
+    if (less(D, 0.09f))
+    {
+        threshold = (factor + D) * 0.5f;
+        half3 shadowColor = less(threshold, _SecondShadow) ? _SecondShadowMultColor : _FirstShadowMultColor + GI;
+        diffColor = baseTexColor * shadowColor;
+    }
+    else
+    {
+        // mapping [0.1, 0.5) to [-0.1, 0.5)
+        if (greaterEqual(D, 0.5f)) D = D * 1.2f - 0.1f;
+        else D = D * 1.25f - 0.125f;
+
+        threshold = (factor + D) * 0.5f;
+
+        
+#ifdef DIFFUSE_RAMP
+        half ramp = tex2D(_RampTex, float2(saturate(threshold - _LightArea), 0.5)).r;
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp);
+        half3 lightColor = lerp(0, additionalColor, ramp);
+#else
+        half w = sigmoid(threshold, _LightArea, _ShadowFeather);
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w);
+        half3 lightColor = lerp(0, additionalColor, w);
+#endif
+        shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
+        diffColor = baseTexColor * shadowColor;
+        diffColor += lightColor * baseTexColor;
     }
     return diffColor;
 }
@@ -354,13 +406,14 @@ half4 frag(Varyings varying) : COLOR
         for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
         {
             Light light = GetAdditionalLight(lightIndex, varying.posWS);
-            lightColor += light.color * light.distanceAttenuation / PI * _AdditionalLightFactor;
+            lightColor += light.color * light.distanceAttenuation;
             //#if defined(RIM_GLOW_WITH_LIGHT) && defined(RIM_GLOW)
             //        half factor = diffuse_factor(varying.normal, light.direction);
             //        baseTexColor.rgb = rgFragWithLight(baseTexColor.rgb, lightColor, normalize(varying.normal), normalize(_WorldSpaceCameraPos.xyz - varying.posWS), factor, _LightArea);
             //#endif
         }
-        baseTexColor += lightColor;
+        lightColor *= _AdditionalLightFactor / PI;
+        //baseTexColor += lightColor;
     }
 #endif
 
@@ -371,23 +424,35 @@ half4 frag(Varyings varying) : COLOR
     //diff = max(diff, 0.001f);
     //diff = varying.diff / diff;
     //Diffuse
-    outColor.rgb = complex_toon_diffuseEx(diff,
+    outColor.rgb = ToonDiffuseWithLights(diff,
         0.1,
         1,
         baseTexColor,
         mainLight.color.rgb,
+        lightColor,
         GI,
         mainLight.shadowAttenuation);
 #else
     diff = varying.diff.x;
+#ifdef _ADDITIONAL_LIGHTS
     //Diffuse
-    outColor.rgb = complex_toon_diffuseEx(diff,
+    outColor.rgb = ToonDiffuseWithAdditionalLights(diff,
+        varying.color.r,
+        tex_Light_Color.g,
+        baseTexColor,
+        mainLight.color.rgb,
+        lightColor,
+        GI,
+        mainLight.shadowAttenuation);
+#else
+    outColor.rgb = ToonDiffuse(diff,
         varying.color.r,
         tex_Light_Color.g,
         baseTexColor,
         mainLight.color.rgb,
         GI,
         mainLight.shadowAttenuation);
+#endif
 #endif
     
 
