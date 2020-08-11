@@ -48,6 +48,7 @@ namespace UnityEditor.Rendering.Universal
                 PBRMasterNode.StyleScaleSlotId,
                 PBRMasterNode.RimWidthSlotId,
                 PBRMasterNode.SpecularSizeSlotId,
+                PBRMasterNode.SpecularIntensitySlotId,
                 PBRMasterNode.TestColorScaleSlotId,
                 PBRMasterNode.TestColorSlotId,
                 PBRMasterNode.StyleNdotLSlotId
