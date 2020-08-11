@@ -361,12 +361,49 @@ half3 DirectBDRF(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half
     specularTerm = clamp(specularTerm, 0.0, 100.0); // Prevent FP16 overflow on mobiles
 #endif
 
+    half3 color = specularTerm * brdfData.specular + brdfData.diffuse;
+    return color;
+#else
+    return brdfData.diffuse;
+#endif
+}
+
+half3 DirectBDRFStyle(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half3 viewDirectionWS, bool isMianLight, half SpecularSize)
+{
+#ifndef _SPECULARHIGHLIGHTS_OFF
+    float3 halfDir = SafeNormalize(float3(lightDirectionWS)+float3(viewDirectionWS));
+
+    float NoH = saturate(dot(normalWS, halfDir));
+    half LoH = saturate(dot(lightDirectionWS, halfDir));
+
+    // GGX Distribution multiplied by combined approximation of Visibility and Fresnel
+    // BRDFspec = (D * V * F) / 4.0
+    // D = roughness^2 / ( NoH^2 * (roughness^2 - 1) + 1 )^2
+    // V * F = 1.0 / ( LoH^2 * (roughness + 0.5) )
+    // See "Optimizing PBR for Mobile" from Siggraph 2015 moving mobile graphics course
+    // https://community.arm.com/events/1155
+
+    // Final BRDFspec = roughness^2 / ( NoH^2 * (roughness^2 - 1) + 1 )^2 * (LoH^2 * (roughness + 0.5) * 4.0)
+    // We further optimize a few light invariant terms
+    // brdfData.normalizationTerm = (roughness + 0.5) * 4.0 rewritten as roughness * 4.0 + 2.0 to a fit a MAD.
+    float d = NoH * NoH * brdfData.roughness2MinusOne + 1.00001f;
+
+    half LoH2 = LoH * LoH;
+    half specularTerm = brdfData.roughness2 / ((d * d) * max(0.1h, LoH2) * brdfData.normalizationTerm);
+
+    // On platforms where half actually means something, the denominator has a risk of overflow
+    // clamp below was added specifically to "fix" that, but dx compiler (we convert bytecode to metal/gles)
+    // sees that specularTerm have only non-negative terms, so it skips max(0,..) in clamp (leaving only min(100,...))
+#if defined (SHADER_API_MOBILE) || defined (SHADER_API_SWITCH)
+    specularTerm = specularTerm - HALF_MIN;
+    specularTerm = clamp(specularTerm, 0.0, 100.0); // Prevent FP16 overflow on mobiles
+#endif
+
 #ifdef _ToonStyle
     if (isMianLight)
     {
-        //specularTerm = 5 * smoothstep(4, 4.1, specularTerm);
-        specularTerm = 100 * smoothstep(2, 20, specularTerm);
-        //specularTerm = specularTerm * smoothstep(3, 3, specularTerm);
+        specularTerm *= SpecularSize;
+        specularTerm = pow(specularTerm, 2);
     }
 #endif
 
@@ -550,12 +587,6 @@ half3 LightingSpecular(half3 lightColor, half3 lightDir, half3 normal, half3 vie
 half3 LightingPhysicallyBased(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, half lightAttenuation, half3 normalWS, half3 viewDirectionWS, bool isMainLight)
 {
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
-#ifdef _ToonStyle
-    if (isMainLight)
-    {
-        NdotL = smoothstep(0, 0.01, NdotL);
-    }
-#endif
     half3 radiance = lightColor * (lightAttenuation * NdotL);
     return DirectBDRF(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight) * radiance;
 }
@@ -565,7 +596,9 @@ half3 LightingPhysicallyBased(BRDFData brdfData, Light light, half3 normalWS, ha
     return LightingPhysicallyBased(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight);
 }
 
-half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS, half lightAttenuation, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL)
+half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS,
+                                   half lightAttenuation, half3 normalWS, half3 viewDirectionWS,
+                                   bool isMainLight, half styleScale, half styleNdotL, half SpecularSize)
 {
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
 #ifdef _ToonStyle
@@ -581,12 +614,12 @@ half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 li
     }
 #endif
     half3 radiance = lightColor * (lightAttenuation * NdotL);
-    return DirectBDRF(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight) * radiance;
+    return DirectBDRFStyle(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight, SpecularSize) * radiance;
 }
 
-half3 LightingPhysicallyBasedStyle(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL)
+half3 LightingPhysicallyBasedStyle(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL, half SpecularSize)
 {
-    return LightingPhysicallyBasedStyle(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight, styleScale, styleNdotL);
+    return LightingPhysicallyBasedStyle(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight, styleScale, styleNdotL, SpecularSize);
 }
 
 half3 VertexLighting(float3 positionWS, half3 normalWS)
@@ -640,7 +673,8 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
 }
 
 half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic, half3 specular,
-    half smoothness, half occlusion, half3 emission, half alpha, half styleScale, half styleNdotL)
+    half smoothness, half occlusion, half3 emission, half alpha, half styleScale, half styleNdotL,
+    half SpecularSize)
 {
     BRDFData brdfData;
     InitializeBRDFData(albedo, metallic, specular, smoothness, alpha, brdfData);
@@ -650,7 +684,7 @@ half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic
 
     half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
 
-    color += LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL);
+    color += LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL, SpecularSize);
 
 #ifdef _ADDITIONAL_LIGHTS
     uint pixelLightCount = GetAdditionalLightsCount();
