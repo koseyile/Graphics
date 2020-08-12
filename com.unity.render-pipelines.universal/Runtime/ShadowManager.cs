@@ -21,7 +21,12 @@ namespace UnityEngine.Rendering.Universal
 
         public void AddRenderer(Renderer renderer)
         {
-            m_listRenderer.Add(renderer);
+            if (!m_listRenderer.Exists(delegate(Renderer r)
+                {
+                    return r == renderer;
+                }
+            ))
+                m_listRenderer.Add(renderer);
         }
 
 
