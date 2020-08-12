@@ -252,11 +252,11 @@ half3 ToonDiffuseWithAdditionalLights(half factor,
         
 #ifdef DIFFUSE_RAMP
         half ramp = tex2D(_RampTex, float2(saturate(threshold - _LightArea), 0.5)).r;
-        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp);
+        half3 shadowColor = lerp(_FirstShadowMultColor + _FirstShadowMultColor * GI, mainLightColor, ramp);
         half3 lightColor = lerp(0, additionalColor, ramp);
 #else
         half w = sigmoid(threshold, _LightArea, _ShadowFeather);
-        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w);
+        half3 shadowColor = lerp(_FirstShadowMultColor + _FirstShadowMultColor * GI, mainLightColor, w);
         half3 lightColor = lerp(0, additionalColor, w);
 #endif
         shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
@@ -404,11 +404,9 @@ half4 frag(Varyings varying) : COLOR
 #else
     Light mainLight = GetMainLight();
 #endif
-    // 无方向的light probe的全局光只作用于暗部
-    half3 GI = SampleSH(half3(0, 0, 0));
-    //GI *= PI * PI;
+    
 
-    half3 lightColor = (half3)0;
+    half3 additionalLightColor = (half3)0;
 #ifdef _ADDITIONAL_LIGHTS
     if (_AdditionalLightFactor > 0.001f)
     {
@@ -416,16 +414,24 @@ half4 frag(Varyings varying) : COLOR
         for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
         {
             Light light = GetAdditionalLight(lightIndex, varying.posWS);
-            lightColor += light.color * light.distanceAttenuation;
+            additionalLightColor += light.color * light.distanceAttenuation;
             //#if defined(RIM_GLOW_WITH_LIGHT) && defined(RIM_GLOW)
             //        half factor = diffuse_factor(varying.normal, light.direction);
             //        baseTexColor.rgb = rgFragWithLight(baseTexColor.rgb, lightColor, normalize(varying.normal), normalize(_WorldSpaceCameraPos.xyz - varying.posWS), factor, _LightArea);
             //#endif
         }
-        lightColor *= _AdditionalLightFactor / PI;
-        //baseTexColor += lightColor;
+        additionalLightColor *= _AdditionalLightFactor / PI;
     }
 #endif
+
+    
+    // 间接光包含了环境光和GI，明暗面都会影响
+    half3 indirectLight = SampleSH(half3(0, 0, 0));
+    indirectLight += UNITY_LIGHTMODEL_AMBIENT;
+    //GI *= PI * PI;
+
+    half3 mainLightColor = mainLight.color.rgb;
+    mainLightColor += indirectLight;
 
     half diff = 0.0f;
 #ifdef FACE_MAP
@@ -434,13 +440,13 @@ half4 frag(Varyings varying) : COLOR
     //diff = max(diff, 0.001f);
     //diff = varying.diff / diff;
     //Diffuse
-    outColor.rgb = ToonDiffuseWithLights(diff,
+    outColor.rgb = ToonDiffuse(diff,
         0.1,
         1,
         baseTexColor,
-        mainLight.color.rgb,
+        mainLightColor,
         lightColor,
-        GI,
+        indirectLight,
         mainLight.shadowAttenuation);
 #else
     diff = varying.diff.x;
@@ -450,17 +456,17 @@ half4 frag(Varyings varying) : COLOR
         varying.color.r,
         tex_Light_Color.g,
         baseTexColor,
-        mainLight.color.rgb,
-        lightColor,
-        GI,
+        mainLightColor,
+        additionalLightColor,
+        indirectLight,
         mainLight.shadowAttenuation);
 #else
     outColor.rgb = ToonDiffuse(diff,
         varying.color.r,
         tex_Light_Color.g,
         baseTexColor,
-        mainLight.color.rgb,
-        GI,
+        mainLightColor,
+        indirectLight,
         mainLight.shadowAttenuation);
 #endif
 #endif
