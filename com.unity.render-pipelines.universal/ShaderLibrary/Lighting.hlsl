@@ -613,8 +613,9 @@ half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 li
         NdotL = NdotL_Toon;
     }
 #endif
-    half3 radiance = lightColor * (lightAttenuation * NdotL);
-    return DirectBDRFStyle(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight, SpecularSize, SpecularIntensity, SpecularColor) * radiance;
+    half3 radiance = lightColor * (lightAttenuation * NdotL+0.8);
+    //half3 radiance = lightColor * (lightAttenuation * NdotL);
+    return DirectBDRFStyle(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight, SpecularSize, SpecularIntensity, SpecularColor*lightAttenuation) * radiance;
 }
 
 half3 LightingPhysicallyBasedStyle(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL, half SpecularSize, half SpecularIntensity, half3 SpecularColor)
@@ -685,6 +686,7 @@ half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic
     half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
 
     color += LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL, SpecularSize, SpecularIntensity, SpecularColor);
+    //color = LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL, SpecularSize, SpecularIntensity, SpecularColor);
 
 #ifdef _ADDITIONAL_LIGHTS
     uint pixelLightCount = GetAdditionalLightsCount();
