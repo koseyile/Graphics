@@ -27,6 +27,7 @@ namespace UnityEditor.ShaderGraph
         public const string RimWidthSlotName = "RimWidth";
         public const string SpecularSizeSlotName = "SpecularSize";
         public const string SpecularIntensitySlotName = "SpecularIntensity";
+        public const string SpecularColorSlotName = "SpecularColor";
         public const string TestColorScaleSlotName = "TestColorScale";
         public const string TestColorSlotName = "TestColor";
         public const string StyleNdotLSlotName = "StyleNdotL";
@@ -50,9 +51,10 @@ namespace UnityEditor.ShaderGraph
         public const int RimWidthSlotId = 13;
         public const int SpecularSizeSlotId = 14;
         public const int SpecularIntensitySlotId = 15;
-        public const int TestColorScaleSlotId = 16;
-        public const int TestColorSlotId = 17;
-        public const int StyleNdotLSlotId = 18;
+        public const int SpecularColorSlotId = 16;
+        public const int TestColorScaleSlotId = 17;
+        public const int TestColorSlotId = 18;
+        public const int StyleNdotLSlotId = 19;
 
         public enum Model
         {
@@ -211,6 +213,7 @@ namespace UnityEditor.ShaderGraph
                 AddSlot(new Vector1MaterialSlot(RimWidthSlotId, RimWidthSlotName, RimWidthSlotName, SlotType.Input, 0.716f, ShaderStageCapability.Fragment));
                 AddSlot(new Vector1MaterialSlot(SpecularSizeSlotId, SpecularSizeSlotName, SpecularSizeSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
                 AddSlot(new Vector1MaterialSlot(SpecularIntensitySlotId, SpecularIntensitySlotName, SpecularIntensitySlotName, SlotType.Input, 4f, ShaderStageCapability.Fragment));
+                AddSlot(new ColorRGBMaterialSlot(SpecularColorSlotId, SpecularColorSlotName, SpecularColorSlotName, SlotType.Input, Color.white, ColorMode.Default, ShaderStageCapability.Fragment));
                 AddSlot(new Vector1MaterialSlot(TestColorScaleSlotId, TestColorScaleSlotName, TestColorScaleSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
                 AddSlot(new ColorRGBMaterialSlot(TestColorSlotId, TestColorSlotName, TestColorSlotName, SlotType.Input, Color.black, ColorMode.Default, ShaderStageCapability.Fragment));
                 AddSlot(new Vector1MaterialSlot(StyleNdotLSlotId, StyleNdotLSlotName, StyleNdotLSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
@@ -236,6 +239,7 @@ namespace UnityEditor.ShaderGraph
                 RimWidthSlotId,
                 SpecularSizeSlotId,
                 SpecularIntensitySlotId,
+                SpecularColorSlotId,
                 TestColorScaleSlotId,
                 TestColorSlotId,
                 StyleNdotLSlotId,

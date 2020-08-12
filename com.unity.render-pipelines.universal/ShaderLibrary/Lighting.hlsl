@@ -368,7 +368,7 @@ half3 DirectBDRF(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half
 #endif
 }
 
-half3 DirectBDRFStyle(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half3 viewDirectionWS, bool isMianLight, half SpecularSize, half SpecularIntensity)
+half3 DirectBDRFStyle(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS, half3 viewDirectionWS, bool isMianLight, half SpecularSize, half SpecularIntensity, half3 SpecularColor)
 {
 #ifndef _SPECULARHIGHLIGHTS_OFF
     float3 halfDir = SafeNormalize(float3(lightDirectionWS)+float3(viewDirectionWS));
@@ -407,8 +407,8 @@ half3 DirectBDRFStyle(BRDFData brdfData, half3 normalWS, half3 lightDirectionWS,
     }
 #endif
 
-    half3 color = specularTerm * brdfData.specular + brdfData.diffuse;
-    return color;
+    half3 color = specularTerm * brdfData.specular * SpecularColor + brdfData.diffuse;
+    return color; 
 #else
     return brdfData.diffuse;
 #endif
@@ -598,7 +598,7 @@ half3 LightingPhysicallyBased(BRDFData brdfData, Light light, half3 normalWS, ha
 
 half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 lightDirectionWS,
                                    half lightAttenuation, half3 normalWS, half3 viewDirectionWS,
-                                   bool isMainLight, half styleScale, half styleNdotL, half SpecularSize, half SpecularIntensity)
+                                   bool isMainLight, half styleScale, half styleNdotL, half SpecularSize, half SpecularIntensity, half3 SpecularColor)
 {
     half NdotL = saturate(dot(normalWS, lightDirectionWS));
 #ifdef _ToonStyle
@@ -614,12 +614,12 @@ half3 LightingPhysicallyBasedStyle(BRDFData brdfData, half3 lightColor, half3 li
     }
 #endif
     half3 radiance = lightColor * (lightAttenuation * NdotL);
-    return DirectBDRFStyle(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight, SpecularSize, SpecularIntensity) * radiance;
+    return DirectBDRFStyle(brdfData, normalWS, lightDirectionWS, viewDirectionWS, isMainLight, SpecularSize, SpecularIntensity, SpecularColor) * radiance;
 }
 
-half3 LightingPhysicallyBasedStyle(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL, half SpecularSize, half SpecularIntensity)
+half3 LightingPhysicallyBasedStyle(BRDFData brdfData, Light light, half3 normalWS, half3 viewDirectionWS, bool isMainLight, half styleScale, half styleNdotL, half SpecularSize, half SpecularIntensity, half3 SpecularColor)
 {
-    return LightingPhysicallyBasedStyle(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight, styleScale, styleNdotL, SpecularSize, SpecularIntensity);
+    return LightingPhysicallyBasedStyle(brdfData, light.color, light.direction, light.distanceAttenuation * light.shadowAttenuation, normalWS, viewDirectionWS, isMainLight, styleScale, styleNdotL, SpecularSize, SpecularIntensity, SpecularColor);
 }
 
 half3 VertexLighting(float3 positionWS, half3 normalWS)
@@ -674,7 +674,7 @@ half4 UniversalFragmentPBR(InputData inputData, half3 albedo, half metallic, hal
 
 half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic, half3 specular,
     half smoothness, half occlusion, half3 emission, half alpha, half styleScale, half styleNdotL,
-    half SpecularSize, half SpecularIntensity)
+    half SpecularSize, half SpecularIntensity, half3 SpecularColor)
 {
     BRDFData brdfData;
     InitializeBRDFData(albedo, metallic, specular, smoothness, alpha, brdfData);
@@ -684,7 +684,7 @@ half4 UniversalFragmentStylePBR(InputData inputData, half3 albedo, half metallic
 
     half3 color = GlobalIllumination(brdfData, inputData.bakedGI, occlusion, inputData.normalWS, inputData.viewDirectionWS);
 
-    color += LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL, SpecularSize, SpecularIntensity);
+    color += LightingPhysicallyBasedStyle(brdfData, mainLight, inputData.normalWS, inputData.viewDirectionWS, true, styleScale, styleNdotL, SpecularSize, SpecularIntensity, SpecularColor);
 
 #ifdef _ADDITIONAL_LIGHTS
     uint pixelLightCount = GetAdditionalLightsCount();
