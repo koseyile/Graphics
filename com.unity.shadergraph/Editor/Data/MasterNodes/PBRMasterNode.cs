@@ -31,6 +31,7 @@ namespace UnityEditor.ShaderGraph
         public const string TestColorScaleSlotName = "TestColorScale";
         public const string TestColorSlotName = "TestColor";
         public const string StyleNdotLSlotName = "StyleNdotL";
+        public const string ShadowAttenuationSlotName = "ShadowAttenuation";
         public const string PositionName = "Vertex Position";
         public const string NormalName = "Vertex Normal";
         public const string TangentName = "Vertex Tangent";
@@ -55,6 +56,7 @@ namespace UnityEditor.ShaderGraph
         public const int TestColorScaleSlotId = 17;
         public const int TestColorSlotId = 18;
         public const int StyleNdotLSlotId = 19;
+        public const int ShadowAttenuationSlotId = 20;
 
         public enum Model
         {
@@ -217,6 +219,7 @@ namespace UnityEditor.ShaderGraph
                 AddSlot(new Vector1MaterialSlot(TestColorScaleSlotId, TestColorScaleSlotName, TestColorScaleSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
                 AddSlot(new ColorRGBMaterialSlot(TestColorSlotId, TestColorSlotName, TestColorSlotName, SlotType.Input, Color.black, ColorMode.Default, ShaderStageCapability.Fragment));
                 AddSlot(new Vector1MaterialSlot(StyleNdotLSlotId, StyleNdotLSlotName, StyleNdotLSlotName, SlotType.Input, 1f, ShaderStageCapability.Fragment));
+                AddSlot(new Vector1MaterialSlot(ShadowAttenuationSlotId, ShadowAttenuationSlotName, ShadowAttenuationSlotName, SlotType.Input, 0.8f, ShaderStageCapability.Fragment));
             }
 
             // clear out slot names that do not match the slots
@@ -243,6 +246,7 @@ namespace UnityEditor.ShaderGraph
                 TestColorScaleSlotId,
                 TestColorSlotId,
                 StyleNdotLSlotId,
+                ShadowAttenuationSlotId,
             }, true);
         }
 

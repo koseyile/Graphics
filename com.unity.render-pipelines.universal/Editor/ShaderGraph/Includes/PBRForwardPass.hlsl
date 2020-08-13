@@ -80,7 +80,8 @@ half4 frag(PackedVaryings packedInput) : SV_TARGET
             surfaceDescription.StyleNdotL,
             surfaceDescription.SpecularSize,
             surfaceDescription.SpecularIntensity,
-            surfaceDescription.SpecularColor);
+            surfaceDescription.SpecularColor,
+            surfaceDescription.ShadowAttenuation);
 #else
     half4 color = UniversalFragmentPBR(
             inputData,

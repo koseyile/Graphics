@@ -52,7 +52,8 @@ namespace UnityEditor.Rendering.Universal
                 PBRMasterNode.SpecularColorSlotId,
                 PBRMasterNode.TestColorScaleSlotId,
                 PBRMasterNode.TestColorSlotId,
-                PBRMasterNode.StyleNdotLSlotId
+                PBRMasterNode.StyleNdotLSlotId,
+                PBRMasterNode.ShadowAttenuationSlotId,
             },
 
             // Required fields
