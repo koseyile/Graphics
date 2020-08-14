@@ -316,11 +316,7 @@ half3 EnvironmentBRDF(BRDFData brdfData, half3 indirectDiffuse, half3 indirectSp
 {
     half3 c = indirectDiffuse * brdfData.diffuse;
     float surfaceReduction = 1.0 / (brdfData.roughness2 + 1.0);
-#ifdef _ToonStyle 
     c += surfaceReduction * indirectSpecular * lerp(brdfData.specular, brdfData.grazingTerm, fresnelTerm);
-#else
-    c += surfaceReduction * indirectSpecular * lerp(brdfData.specular, brdfData.grazingTerm, fresnelTerm);
-#endif
     return c;
 }
 
