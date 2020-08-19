@@ -5,7 +5,7 @@ using UnityEditor.Rendering.Universal;
 
 namespace UnityEditor.Rendering.Universal.ShaderGUI
 {
-    internal class LitShader : BaseShaderGUI
+    public class LitShader : BaseShaderGUI
     {
         // Properties
         private LitGUI.LitProperties litProperties;

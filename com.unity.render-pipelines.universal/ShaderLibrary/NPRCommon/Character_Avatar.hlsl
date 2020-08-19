@@ -2,11 +2,12 @@
 #define CHARACTER_AVATAR_INCLUDED
 
 #include "Common_Macros.hlsl"  
+#include "Character_Avatar_Declaration.hlsl"
 
-half4 _BaseColor;
-sampler2D _MainTex;
-sampler2D _MainTex_Alpha;
-float4 _MainTex_ST;
+//half4 _BaseColor;
+//sampler2D _MainTex;
+//sampler2D _MainTex_Alpha;
+//float4 _MainTex_ST;
 sampler2D _LightMapTex;
 sampler2D _RampTex;
 
@@ -53,42 +54,6 @@ sampler2D _MatcapNormalMap;
 uniform float4 _MatcapNormalMap_ST;
 #endif
 #endif
-
-
-struct Attributes
-{
-    float4 vertex : POSITION;
-    float3 normal : NORMAL;
-    float4 tangent : TANGENT;
-    float4 texcoord : TEXCOORD0;
-    // R通道控制阴影的区域
-    // G和B通道控制勾线
-    // 其中G通道控制XY平面的宽度，B通道控制Z方向的offset
-    half4 color : COLOR;
-};
-
-struct Varyings
-{
-    float4 position : POSITION;
-    half4 color : COLOR0;
-    float2 texcoord : TEXCOORD0;
-    float3 normal : TEXCOORD1;
-    float3 posWS : TEXCOORD2;
-    float4 scrpos : TEXCOORD3;
-#ifdef RECEIVE_SHADOW
-    float4 shadowCoord : TEXCOORD4;
-#endif
-#ifdef ENABLE_MATCAP
-    half2 matcapUV : TEXCOORD5;
-#ifdef ENABLE_MATCAP_NROMAL_MAP
-    half3 tspace0 : TEXCOORD6;
-    half3 tspace1 : TEXCOORD7;
-    half3 tspace2 : TEXCOORD8;
-#endif
-#endif
-    //DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
-    half2 diff : COLOR1;
-};
 
 // Lighting functions
 half diffuse_factor(half3 N, half3 L)
@@ -308,7 +273,7 @@ void CalculateMatcapUV(half3 N, out half2 matcapUV)
 #endif
 }
 
-void ApplyMatcap(Varyings varying, out half3 color)
+void ApplyMatcap(ToonVaryings varying, out half3 color)
 {
 #ifdef ENABLE_MATCAP
 #ifdef ENABLE_MATCAP_NROMAL_MAP
@@ -326,73 +291,19 @@ void ApplyMatcap(Varyings varying, out half3 color)
 }
 
 
-
-Varyings vert(Attributes attribute)
-{
-    Varyings varying = (Varyings)0;
-
-    varying.position = TransformObjectToHClip(attribute.vertex.xyz);
-    varying.color = attribute.color;
-    float4 objPos = mul(unity_ObjectToWorld, attribute.vertex);
-    varying.posWS = objPos.xyz / objPos.w;
-    //varying.texcoord = TRANSFORM_TEX(attribute.texcoord.xy, _MainTex);
-    varying.texcoord = attribute.texcoord.xy;
-
-    //Normal
-    varying.normal = normalize(TransformObjectToWorldNormal(attribute.normal));
-
-#if defined(ENABLE_MATCAP_NROMAL_MAP) && defined(ENABLE_MATCAP)
-    calcTBNMatrix(attribute.normal, attribute.tangent, varying.tspace0, varying.tspace1, varying.tspace2);
-#endif
-    //Diffuse
-    // calculate diffuse factor
-#ifdef FRONT_FACE_LIGHT
-    float3 mainLightDir = _VirtualLightDir;
-#else
-    float3 mainLightDir = _MainLightPosition.xyz;
-#endif
-
-#ifdef FACE_MAP
-    float3x3 matrixWithoutTransport;
-    matrixWithoutTransport[0] = unity_WorldToObject[0].xyz;
-    matrixWithoutTransport[1] = unity_WorldToObject[1].xyz;
-    matrixWithoutTransport[2] = unity_WorldToObject[2].xyz;
-    float3 lightDirLocal = mul(matrixWithoutTransport, mainLightDir);
-    varying.diff.x = (atan(lightDirLocal.x / lightDirLocal.z)) / PI;
-    varying.diff.y = (atan(lightDirLocal.y / lightDirLocal.z)) / PI;
-    varying.diff = varying.diff * 2.0f + 1.0f;
-#else
-    varying.diff.x = diffuse_factor(varying.normal, mainLightDir);
-#endif
-#ifdef RECEIVE_SHADOW
-    varying.shadowCoord = GetShadowCoord(varying.posWS);
-#endif
-    //OUTPUT_SH(varying.normal, varying.vertexSH);
-
-#if defined(ENABLE_MATCAP_NROMAL_MAP) && defined(ENABLE_MATCAP)
-    CalculateMatcapUV(varying.normal, varying.matcapUV);
-#endif
-
-    if (_UsingDitherAlpha)
-    {
-        varying.scrpos = ComputeScreenPos(varying.position);
-        varying.scrpos.z = _DitherAlpha;
-    }
-
-    return varying;
-} // End of vert
-
-half4 frag(Varyings varying) : COLOR
+half4 ToonShading(ToonVaryings varying)
 {
     half4 outColor = (float4)0;
-    float2 mainUV = TRANSFORM_TEX(varying.texcoord, _MainTex);
+    half2 mainUV = TRANSFORM_TEX(varying.texcoord, _BaseMap);
     // 高光贴图的通道作用：
     // R通道：高光强度，控制高光的强度，当0时可以禁用
-    // G通道：阴影阀值，它乘以顶点色的R通道可以控制阴影的区域
+    // G通道：阴影阈值，它乘以顶点色的R通道可以控制阴影的区域
     // B通道：光滑度，镜面阈值；数值越大，高光越强。
     half3 tex_Light_Color = tex2DRGB(_LightMapTex, mainUV).rgb;
 
-    half3 baseTexColor = tex2D(_MainTex, mainUV).rgb;
+    //half3 baseTexColor = tex2D(sampler_BaseMap, mainUV).rgb;
+    half3 baseTexColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, mainUV);
+
     baseTexColor = RampBaseColor(baseTexColor, _RevertTonemapping);
 #ifdef RECEIVE_SHADOW
 #ifdef NO_SELF_SHADOW
@@ -404,7 +315,7 @@ half4 frag(Varyings varying) : COLOR
 #else
     Light mainLight = GetMainLight();
 #endif
-    
+
 
     half3 additionalLightColor = (half3)0;
 #ifdef _ADDITIONAL_LIGHTS
@@ -424,7 +335,7 @@ half4 frag(Varyings varying) : COLOR
     }
 #endif
 
-    
+
     // 间接光包含了环境光和GI，明暗面都会影响
     half3 indirectLight = SampleSH(half3(0, 0, 0));
     indirectLight += UNITY_LIGHTMODEL_AMBIENT;
@@ -470,7 +381,7 @@ half4 frag(Varyings varying) : COLOR
         mainLight.shadowAttenuation);
 #endif
 #endif
-    
+
 
     // 高光项
     half3 N = normalize(varying.normal);
@@ -531,6 +442,70 @@ half4 frag(Varyings varying) : COLOR
 
     //outColor.rgb = _WorldSpaceLightPos0;
     return outColor;
+}
+
+
+
+ToonVaryings vert(ToonAttributes attribute)
+{
+    ToonVaryings varying = (ToonVaryings)0;
+
+    varying.position = TransformObjectToHClip(attribute.vertex.xyz);
+    varying.color = attribute.color;
+    float4 objPos = mul(unity_ObjectToWorld, attribute.vertex);
+    varying.posWS = objPos.xyz / objPos.w;
+    //varying.texcoord = TRANSFORM_TEX(attribute.texcoord.xy, _BaseMap);
+    varying.texcoord = attribute.texcoord.xy;
+
+    //Normal
+    varying.normal = normalize(TransformObjectToWorldNormal(attribute.normal));
+
+#if defined(ENABLE_MATCAP_NROMAL_MAP) && defined(ENABLE_MATCAP)
+    calcTBNMatrix(attribute.normal, attribute.tangent, varying.tspace0, varying.tspace1, varying.tspace2);
+#endif
+    //Diffuse
+    // calculate diffuse factor
+#ifdef FRONT_FACE_LIGHT
+    float3 mainLightDir = _VirtualLightDir;
+#else
+    float3 mainLightDir = _MainLightPosition.xyz;
+#endif
+
+#ifdef FACE_MAP
+    float3x3 matrixWithoutTransport;
+    matrixWithoutTransport[0] = unity_WorldToObject[0].xyz;
+    matrixWithoutTransport[1] = unity_WorldToObject[1].xyz;
+    matrixWithoutTransport[2] = unity_WorldToObject[2].xyz;
+    float3 lightDirLocal = mul(matrixWithoutTransport, mainLightDir);
+    varying.diff.x = (atan(lightDirLocal.x / lightDirLocal.z)) / PI;
+    varying.diff.y = (atan(lightDirLocal.y / lightDirLocal.z)) / PI;
+    varying.diff = varying.diff * 2.0f + 1.0f;
+#else
+    varying.diff.x = diffuse_factor(varying.normal, mainLightDir);
+#endif
+#ifdef RECEIVE_SHADOW
+    varying.shadowCoord = GetShadowCoord(varying.posWS);
+#endif
+    //OUTPUT_SH(varying.normal, varying.vertexSH);
+
+#if defined(ENABLE_MATCAP_NROMAL_MAP) && defined(ENABLE_MATCAP)
+    CalculateMatcapUV(varying.normal, varying.matcapUV);
+#endif
+
+    if (_UsingDitherAlpha)
+    {
+        varying.scrpos = ComputeScreenPos(varying.position);
+        varying.scrpos.z = _DitherAlpha;
+    }
+
+    return varying;
+} // End of vert
+
+half4 frag(ToonVaryings varying) : COLOR
+{
+    return ToonShading(varying);
 } // End of frag
+
+
 
 #endif // CHARACTER_AVATAR_INCLUDED
