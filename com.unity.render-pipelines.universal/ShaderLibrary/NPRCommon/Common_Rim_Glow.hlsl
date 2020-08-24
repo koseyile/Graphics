@@ -65,6 +65,20 @@ half4 rgFragWithLight(in half4 srcColor,
     return color;
 }
 
+half4 rgWithAllLights(in half4 srcColor, in half3 posWS, in float3 N, in float3 V)
+{
+    half4 color = srcColor;
+    uint pixelLightCount = GetAdditionalLightsCount();
+    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+    {
+        Light light = GetAdditionalLight(lightIndex, posWS);
+        half3 lightColor = light.color * light.distanceAttenuation;
+        half factor = diffuse_factor(N, light.direction);
+        color = rgFragWithLight(color, lightColor, N, V, factor, _LightArea, _BloomFactor);
+    }
+    return color;
+}
+
 //Fragment Shader
 half4 rgFrag_Alpha(in half4 srcColor, in float3 N, in float3 V)
 {

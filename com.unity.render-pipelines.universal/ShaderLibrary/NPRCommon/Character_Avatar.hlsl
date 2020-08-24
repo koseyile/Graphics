@@ -4,80 +4,6 @@
 #include "Common_Macros.hlsl"  
 #include "Character_Avatar_Declaration.hlsl"
 
-//half4 _BaseColor;
-//sampler2D _MainTex;
-//sampler2D _MainTex_Alpha;
-//float4 _MainTex_ST;
-sampler2D _LightMapTex;
-sampler2D _RampTex;
-
-half _LightArea;
-half _SecondShadow;
-half3 _FirstShadowMultColor;
-half3 _SecondShadowMultColor;
-half _ShadowFeather;
-half _ShadowFeatherCenter;
-#ifdef _ADDITIONAL_LIGHTS
-half _AdditionalLightFactor;
-#endif
-half _Shininess;
-half _SpecMulti;
-half _ShadowDarkness;
-half3 _LightSpecColor;
-
-half4 _EmissiveColor;
-sampler2D _EmissiveTex;
-
-half _Opaqueness;
-
-half4 _LightColor0;
-half _BloomFactor;
-half _RevertTonemapping;
-
-half _FadeDistance;
-half _FadeOffset;
-
-float _UsingDitherAlpha;
-float _DitherAlpha;
-#ifdef FRONT_FACE_LIGHT
-float3 _CharacterOrientation;
-float3 _VirtualLightDir;
-#endif
-#ifdef FACE_MAP
-sampler2D _FaceMap;
-#endif
-#ifdef ENABLE_MATCAP
-sampler2D _Matcap;
-half4 _MatcapColor;
-#ifdef ENABLE_MATCAP_NROMAL_MAP
-sampler2D _MatcapNormalMap;
-uniform float4 _MatcapNormalMap_ST;
-#endif
-#endif
-
-// Lighting functions
-half diffuse_factor(half3 N, half3 L)
-{
-    // 由于某些精度问题，这里乘0.4975，而不是0.5
-    return dot(N, L) * 0.4975f + 0.5f;
-    //return dot(N, L);
-}
-
-half specular_factor(half3 N, half3 H, half shininess)
-{
-    return pow(max(dot(N, H), 0), shininess);
-}
-
-half rim_factor(half3 N, half3 V, half shininess)
-{
-    return pow(1.0f - max(0, dot(N, V)), shininess);
-}
-
-half front_factor(half3 N, half3 V, half shininess)
-{
-    return pow(max(0, dot(N, V)), shininess);
-}
-
 float sigmoid(float x, float center, float sharp)
 {
     float s;
@@ -92,55 +18,6 @@ half3 Emissive(half2 uv)
     return emissive;
 }
 
-
-half3 complex_toon_diffuse(half factor, half t1, half t2, half3 baseTexColor)
-{
-    half3 diffColor = half3(1.0f, 1.0f, 1.0f).rgb;
-
-    half D = t1 * t2;
-    half threshold = 0;
-
-    if (less(D, 0.09f))
-    {
-        threshold = (factor + D) * 0.5f;
-        // in dark shadow
-        if (less(threshold, _SecondShadow))
-        {
-            diffColor = baseTexColor * _SecondShadowMultColor;
-            //diffColor = half3(1, 0, 0);
-        }
-        // in light shadow
-        else
-        {
-            diffColor = baseTexColor * _FirstShadowMultColor;
-            //diffColor = half3(0, 1, 0);
-        }
-    }
-    else
-    {
-        // mapping [0.1, 0.5) to [-0.1, 0.5)
-        if (greaterEqual(D, 0.5f)) D = D * 1.2f - 0.1f;
-        else D = D * 1.25f - 0.125f;
-
-        threshold = (factor + D) * 0.5f;
-
-        // in light shadow
-        if (less(threshold, _LightArea))
-        {
-            diffColor = baseTexColor * _FirstShadowMultColor;
-            //diffColor = half3(0, 1, 0);
-        }
-        // in light
-        else
-        {
-            diffColor = baseTexColor;
-            //diffColor = half3(0, 0, 1);
-        }
-
-    }
-    return diffColor;
-}
-
 //3阶：light, light shadow(_FirstShadowMultColor), dark shadow(_SecondShadowMultColor)
 // 高光贴图的G通道乘以顶点色的R通道可以控制阴影的区域
 half3 ToonDiffuse(half factor,
@@ -148,6 +25,9 @@ half3 ToonDiffuse(half factor,
     half t2,
     half3 baseTexColor,
     half3 mainLightColor,
+#ifdef _ADDITIONAL_LIGHTS
+    half3 additionalColor,
+#endif
     half3 GI,
     half shadowAttenuation)
 {
@@ -174,59 +54,21 @@ half3 ToonDiffuse(half factor,
 #ifdef DIFFUSE_RAMP
         half ramp = tex2D(_RampTex, float2(saturate(threshold - _LightArea), 0.5)).r;
         half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp);
-#else
-        half w = sigmoid(threshold, _LightArea, _ShadowFeather);
-        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, w);
-#endif
-        //half3 shadowColor = less(threshold, _LightArea) ? _FirstShadowMultColor * GI : _MainLightColor.rgb;
-
-        shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
-        diffColor = baseTexColor * shadowColor;
-    }
-    return diffColor;
-}
-
-half3 ToonDiffuseWithAdditionalLights(half factor,
-    half t1,
-    half t2,
-    half3 baseTexColor,
-    half3 mainLightColor,
-    half3 additionalColor,
-    half3 GI,
-    half shadowAttenuation)
-{
-    half3 diffColor = half3(1.0f, 1.0f, 1.0f).rgb;
-
-    half D = t1 * t2;
-    half threshold = 0;
-
-    if (less(D, 0.09f))
-    {
-        threshold = (factor + D) * 0.5f;
-        half3 shadowColor = less(threshold, _SecondShadow) ? _SecondShadowMultColor : _FirstShadowMultColor + GI;
-        diffColor = baseTexColor * shadowColor;
-    }
-    else
-    {
-        // mapping [0.1, 0.5) to [-0.1, 0.5)
-        if (greaterEqual(D, 0.5f)) D = D * 1.2f - 0.1f;
-        else D = D * 1.25f - 0.125f;
-
-        threshold = (factor + D) * 0.5f;
-
-        
-#ifdef DIFFUSE_RAMP
-        half ramp = tex2D(_RampTex, float2(saturate(threshold - _LightArea), 0.5)).r;
-        half3 shadowColor = lerp(_FirstShadowMultColor + _FirstShadowMultColor * GI, mainLightColor, ramp);
+#ifdef _ADDITIONAL_LIGHTS
         half3 lightColor = lerp(0, additionalColor, ramp);
+#endif
 #else
-        half w = sigmoid(threshold, _LightArea, _ShadowFeather);
-        half3 shadowColor = lerp(_FirstShadowMultColor + _FirstShadowMultColor * GI, mainLightColor, w);
-        half3 lightColor = lerp(0, additionalColor, w);
+        half ramp = sigmoid(threshold, _LightArea, _ShadowFeather);
+        half3 shadowColor = lerp(_FirstShadowMultColor + GI, mainLightColor, ramp);
+#ifdef _ADDITIONAL_LIGHTS
+        half3 lightColor = lerp(0, additionalColor, ramp);
+#endif
 #endif
         shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
         diffColor = baseTexColor * shadowColor;
+#ifdef _ADDITIONAL_LIGHTS
         diffColor += lightColor * baseTexColor;
+#endif
     }
     return diffColor;
 }
@@ -273,20 +115,25 @@ void CalculateMatcapUV(half3 N, out half2 matcapUV)
 #endif
 }
 
-void ApplyMatcap(ToonVaryings varying, out half3 color)
+void ApplyMatcap(half2 matcapUV, out half3 color)
 {
 #ifdef ENABLE_MATCAP
+    color = tex2D(_Matcap, matcapUV).rgb * _MatcapColor;
+#endif
+}
+
+void ApplyMatcap(half2 uv, half3 tspace0, half3 tspace1, half3 tspace2, out half3 color)
+{
 #ifdef ENABLE_MATCAP_NROMAL_MAP
-    float2 uv = TRANSFORM_TEX(varying.texcoord, _MatcapNormalMap);
+    uv = TRANSFORM_TEX(uv, _MatcapNormalMap);
     half3 normal = UnpackNormal(tex2D(_MatcapNormalMap, uv));
-    normal = TangentToWorldNormal(normal, varying.tspace0, varying.tspace1, varying.tspace2);
+    normal = TangentToWorldNormal(normal, tspace0, tspace1, tspace2);
     //float3x3 tangentTransform = float3x3(i.tangentDir, i.bitangentDir, i.normalDir);
     normal = mul(UNITY_MATRIX_V, normal);
     //float3 viewNormal = (mul(UNITY_MATRIX_V, float4(lerp(i.normalDir, mul(normal, tangentTransform).rgb, _Is_NormalMapForMatCap), 0))).rgb;
     normal = normalize(normal);
-    varying.matcapUV.xy = normal.xy * 0.5f + 0.5f;
-#endif
-    color = tex2D(_Matcap, varying.matcapUV).rgb * _MatcapColor;
+    half2 matcapUV = normal.xy * 0.5f + 0.5f;
+    color = tex2D(_Matcap, matcapUV).rgb * _MatcapColor;
 #endif
 }
 
@@ -301,11 +148,9 @@ half4 ToonShading(ToonVaryings varying)
     // B通道：光滑度，镜面阈值；数值越大，高光越强。
     half3 tex_Light_Color = tex2DRGB(_LightMapTex, mainUV).rgb;
 
-    //half3 baseTexColor = tex2D(sampler_BaseMap, mainUV).rgb;
-    half3 baseTexColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, mainUV);
-
-    baseTexColor = RampBaseColor(baseTexColor, _RevertTonemapping);
-#ifdef RECEIVE_SHADOW
+    half3 baseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, mainUV);
+    baseColor = RampBaseColor(baseColor, _RevertTonemapping);
+#ifndef _RECEIVE_SHADOWS_OFF
 #ifdef NO_SELF_SHADOW
     Light mainLight = GetMainLight();
     mainLight.shadowAttenuation = MainLightRealtimeShadow(varying.shadowCoord);
@@ -354,7 +199,7 @@ half4 ToonShading(ToonVaryings varying)
     outColor.rgb = ToonDiffuse(diff,
         0.1,
         1,
-        baseTexColor,
+        baseColor,
         mainLightColor,
         lightColor,
         indirectLight,
@@ -363,10 +208,10 @@ half4 ToonShading(ToonVaryings varying)
     diff = varying.diff.x;
 #ifdef _ADDITIONAL_LIGHTS
     //Diffuse
-    outColor.rgb = ToonDiffuseWithAdditionalLights(diff,
+    outColor.rgb = ToonDiffuse(diff,
         varying.color.r,
         tex_Light_Color.g,
-        baseTexColor,
+        baseColor,
         mainLightColor,
         additionalLightColor,
         indirectLight,
@@ -375,7 +220,7 @@ half4 ToonShading(ToonVaryings varying)
     outColor.rgb = ToonDiffuse(diff,
         varying.color.r,
         tex_Light_Color.g,
-        baseTexColor,
+        baseColor,
         mainLightColor,
         indirectLight,
         mainLight.shadowAttenuation);
@@ -407,14 +252,7 @@ half4 ToonShading(ToonVaryings varying)
     // 这会让一些不该有边缘光的地方出现边缘光。为了解决这个问题，在《GUILTY GEAR Xrd》中使用边缘光的Mask贴图来对边缘光区域进行调整。
 #ifdef RIM_GLOW
 #if defined(_ADDITIONAL_LIGHTS) && defined(RIM_GLOW_WITH_LIGHT)
-    uint pixelLightCount = GetAdditionalLightsCount();
-    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
-    {
-        Light light = GetAdditionalLight(lightIndex, varying.posWS);
-        half3 lightColor = light.color * light.distanceAttenuation;
-        half factor = diffuse_factor(varying.normal, light.direction);
-        outColor = rgFragWithLight(outColor, lightColor, N, V, factor, _LightArea, _BloomFactor);
-    }
+    outColor = rgWithAllLights(outColor, varying.posWS, N, V);
 #else
     //outColor.rgb = rgFrag(outColor.rgb, N, V);
     outColor.rgb = rgFragEx(outColor.rgb, N, V, varying.diff.x, _LightArea);
@@ -423,7 +261,11 @@ half4 ToonShading(ToonVaryings varying)
 
 #ifdef ENABLE_MATCAP
     half3 matcapColor;
-    ApplyMatcap(varying, matcapColor);
+#ifdef ENABLE_MATCAP_NROMAL_MAP
+    ApplyMatcap(varying.texcoord, varying.tspace0, varying.tspace1, varying.tspace2, matcapColor);
+#else
+    ApplyMatcap(varying.matcapUV, matcapColor);
+#endif
     outColor.rgb += matcapColor;
 #endif
 
@@ -443,8 +285,6 @@ half4 ToonShading(ToonVaryings varying)
     //outColor.rgb = _WorldSpaceLightPos0;
     return outColor;
 }
-
-
 
 ToonVaryings vert(ToonAttributes attribute)
 {
@@ -483,7 +323,7 @@ ToonVaryings vert(ToonAttributes attribute)
 #else
     varying.diff.x = diffuse_factor(varying.normal, mainLightDir);
 #endif
-#ifdef RECEIVE_SHADOW
+#ifndef _RECEIVE_SHADOWS_OFF
     varying.shadowCoord = GetShadowCoord(varying.posWS);
 #endif
     //OUTPUT_SH(varying.normal, varying.vertexSH);

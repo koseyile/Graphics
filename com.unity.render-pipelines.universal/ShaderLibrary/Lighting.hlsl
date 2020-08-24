@@ -6,6 +6,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/NPRCommon/Common_Macros.hlsl"
 
 // If lightmap is not defined than we evaluate GI (ambient + probes) from SH
 // We might do it fully or partially in vertex to save shader ALU
@@ -113,10 +114,15 @@ Light GetMainLight()
 
 Light GetMainLight(float4 shadowCoord, float3 positionWS)
 {
+#ifdef NO_SELF_SHADOW
+    Light light = GetMainLight();
+    light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
+#else
     Light light = GetMainLight();
     light.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
 #ifdef REQUIRES_WORLD_SPACE_POS_INTERPOLATOR
     light.shadowAttenuation *= CustomRealtimeShadow(positionWS);
+#endif
 #endif
     return light;
 }

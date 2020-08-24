@@ -3,6 +3,53 @@
 
 #include "Common_Macros.hlsl"  
 
+sampler2D _LightMapTex;
+sampler2D _RampTex;
+
+half _LightArea;
+half _SecondShadow;
+half3 _FirstShadowMultColor;
+half3 _SecondShadowMultColor;
+half _ShadowFeather;
+half _ShadowFeatherCenter;
+#ifdef _ADDITIONAL_LIGHTS
+half _AdditionalLightFactor;
+#endif
+half _Shininess;
+half _SpecMulti;
+half _ShadowDarkness;
+half3 _LightSpecColor;
+
+half4 _EmissiveColor;
+sampler2D _EmissiveTex;
+
+half _Opaqueness;
+
+half4 _LightColor0;
+half _BloomFactor;
+half _RevertTonemapping;
+
+half _FadeDistance;
+half _FadeOffset;
+
+float _UsingDitherAlpha;
+float _DitherAlpha;
+#ifdef FRONT_FACE_LIGHT
+float3 _CharacterOrientation;
+float3 _VirtualLightDir;
+#endif
+#ifdef FACE_MAP
+sampler2D _FaceMap;
+#endif
+#ifdef ENABLE_MATCAP
+sampler2D _Matcap;
+half4 _MatcapColor;
+#ifdef ENABLE_MATCAP_NROMAL_MAP
+sampler2D _MatcapNormalMap;
+uniform float4 _MatcapNormalMap_ST;
+#endif
+#endif
+
 struct ToonAttributes
 {
     float4 vertex : POSITION;
@@ -23,7 +70,7 @@ struct ToonVaryings
     float3 normal : TEXCOORD1;
     float3 posWS : TEXCOORD2;
     float4 scrpos : TEXCOORD3;
-#ifdef RECEIVE_SHADOW
+#ifndef _RECEIVE_SHADOWS_OFF
     float4 shadowCoord : TEXCOORD4;
 #endif
 #ifdef ENABLE_MATCAP

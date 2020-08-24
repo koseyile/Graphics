@@ -24,6 +24,28 @@ float camera_fade_with_alpha(float4 vertex, float fadeOffset, float fadeDistance
 	return fade;
 }
 
+// Lighting functions
+half diffuse_factor(half3 N, half3 L)
+{
+    // 由于某些精度问题，这里乘0.4975，而不是0.5
+    return dot(N, L) * 0.4975f + 0.5f;
+    //return dot(N, L);
+}
+
+half specular_factor(half3 N, half3 H, half shininess)
+{
+    return pow(max(dot(N, H), 0), shininess);
+}
+
+half rim_factor(half3 N, half3 V, half shininess)
+{
+    return pow(1.0f - max(0, dot(N, V)), shininess);
+}
+
+half front_factor(half3 N, half3 V, half shininess)
+{
+    return pow(max(0, dot(N, V)), shininess);
+}
 
 // return output alpha based on the input alpha and clip plane
 //NOTE: need to modify the given vertex

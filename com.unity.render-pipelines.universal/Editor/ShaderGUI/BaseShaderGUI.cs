@@ -130,6 +130,7 @@ namespace UnityEditor
 
         SavedBool m_AdvancedFoldout;
 
+        protected bool m_showReceiveShadow = true;
         #endregion
 
         private const int queueOffsetRange = 50;
@@ -261,7 +262,7 @@ namespace UnityEditor
             if (alphaClipProp.floatValue == 1)
                 materialEditor.ShaderProperty(alphaCutoffProp, Styles.alphaClipThresholdText, 1);
 
-            if (receiveShadowsProp != null)
+            if (receiveShadowsProp != null && m_showReceiveShadow)
             {
                 EditorGUI.BeginChangeCheck();
                 EditorGUI.showMixedValue = receiveShadowsProp.hasMixedValue;
@@ -388,6 +389,7 @@ namespace UnityEditor
             // Receive Shadows
             if(material.HasProperty("_ReceiveShadows"))
                 CoreUtils.SetKeyword(material, "_RECEIVE_SHADOWS_OFF", material.GetFloat("_ReceiveShadows") == 0.0f);
+            
             // Emission
             if (material.HasProperty("_EmissionColor"))
                 MaterialEditor.FixupEmissiveFlag(material);
