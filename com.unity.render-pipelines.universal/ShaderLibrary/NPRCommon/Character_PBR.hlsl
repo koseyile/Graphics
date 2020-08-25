@@ -134,8 +134,8 @@ half4 UniversalFragmentPBRWithToon(InputData inputData,
 #endif
 
     color += emission;
-    //return half4(color, alpha);
-    return half4(color, _BloomFactor);
+    return half4(color, alpha);
+    //return half4(color, _BloomFactor);
 }
 
 HybridVaryings vertWithPBR(HybridAttributes attribute)
@@ -295,7 +295,6 @@ half4 fragHybridPBR(HybridVaryings varying) : COLOR
     varyingPBR.lightmapUV = float2(0, 0);
 #else
     varyingPBR.vertexSH = varying.vertexSH;
-    //varyingPBR.vertexSH = float3(0, 0, 0);
 #endif
     InputData inputData;
     InitializeInputData(varyingPBR, surfaceData.normalTS, inputData);
@@ -311,7 +310,6 @@ half4 fragHybridPBR(HybridVaryings varying) : COLOR
         surfaceData.alpha,
         varying.color.r,
         tex_Light_Color.g);
-    colorPBR.a = OutputAlpha(colorPBR.a);
 
 #ifdef ENABLE_MATCAP
     half3 matcapColor;
@@ -339,5 +337,13 @@ half4 fragHybridPBR(HybridVaryings varying) : COLOR
     if (_UsingDitherAlpha)
         dither_clip(varying.scrpos, varying.scrpos.z);
     return colorPBR;
+}
+
+half4 fragTransparentOnlyAlpha(HybridVaryings varying) : COLOR
+{
+    half4 outputColor;
+    half4 albedoAlpha = SampleAlbedoAlpha(varying.texcoord, TEXTURE2D_ARGS(_BaseMap, sampler_BaseMap));
+    outputColor.a = _BloomFactor * Alpha(albedoAlpha.a, _BaseColor, _Cutoff);
+    return outputColor;
 }
 #endif // CHARACTER_PBR_INCLUDED
