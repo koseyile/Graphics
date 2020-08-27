@@ -257,27 +257,21 @@ namespace UnityEngine.Rendering.Universal
             size.y = Mathf.Abs(cameraFrustum3[0].y - frustumCenter.y) * 2f;
             size.z = Mathf.Abs(cameraFrustum3[0].z - frustumCenter.z) * 2f;
 
-//             cameraFrustum2[0] = camera.transform.TransformPoint(cameraFrustum2[0]);
-//             cameraFrustum2[1] = camera.transform.TransformPoint(cameraFrustum2[1]);
-//             cameraFrustum2[2] = camera.transform.TransformPoint(cameraFrustum2[2]);
-//             cameraFrustum2[3] = camera.transform.TransformPoint(cameraFrustum2[3]);
-//             cameraFrustum3[0] = camera.transform.TransformPoint(cameraFrustum3[0]);
-//             cameraFrustum3[1] = camera.transform.TransformPoint(cameraFrustum3[1]);
-//             cameraFrustum3[2] = camera.transform.TransformPoint(cameraFrustum3[2]);
-//             cameraFrustum3[3] = camera.transform.TransformPoint(cameraFrustum3[3]);
-            
             Bounds cameraFrustum = new Bounds(frustumCenter, size);
             Bounds intersectBounds = casterBounds;
-            Vector3 min = intersectBounds.min;
-            min.x = Mathf.Max(cameraFrustum.min.x, intersectBounds.min.x);
-            min.y = Mathf.Max(cameraFrustum.min.y, intersectBounds.min.y);
-            min.z = Mathf.Max(cameraFrustum.min.z, intersectBounds.min.z);
-            intersectBounds.min = min;
-            Vector3 max = intersectBounds.max;
-            max.x = Mathf.Min(cameraFrustum.max.x, intersectBounds.max.x);
-            max.y = Mathf.Min(cameraFrustum.max.y, intersectBounds.max.y);
-            max.z = Mathf.Min(cameraFrustum.max.z, intersectBounds.max.z);
-            intersectBounds.max = max;
+
+            // Todo: rewrite the calculation of intersection between the frustum and the object bounds
+            // Theres code below are wrong
+            //Vector3 min = intersectBounds.min;
+            //min.x = Mathf.Max(cameraFrustum.min.x, intersectBounds.min.x);
+            //min.y = Mathf.Max(cameraFrustum.min.y, intersectBounds.min.y);
+            //min.z = Mathf.Max(cameraFrustum.min.z, intersectBounds.min.z);
+            //intersectBounds.min = min;
+            //Vector3 max = intersectBounds.max;
+            //max.x = Mathf.Min(cameraFrustum.max.x, intersectBounds.max.x);
+            //max.y = Mathf.Min(cameraFrustum.max.y, intersectBounds.max.y);
+            //max.z = Mathf.Min(cameraFrustum.max.z, intersectBounds.max.z);
+            //intersectBounds.max = max;
 
             Vector3 position = intersectBounds.center;
             position = position - axisZ * castersRadius * 1.2f;
