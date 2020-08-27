@@ -138,7 +138,7 @@ void ApplyMatcap(half2 uv, half3 tspace0, half3 tspace1, half3 tspace2, out half
 }
 
 
-half4 ToonShading(ToonVaryings varying)
+half4 ToonShading(ToonVaryings varying, int writeBloom)
 {
     half4 outColor = (float4)0;
     half2 mainUV = TRANSFORM_TEX(varying.texcoord, _BaseMap);
@@ -148,8 +148,8 @@ half4 ToonShading(ToonVaryings varying)
     // B通道：光滑度，镜面阈值；数值越大，高光越强。
     half3 tex_Light_Color = tex2DRGB(_LightMapTex, mainUV).rgb;
 
-    half3 baseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, mainUV);
-    baseColor = RampBaseColor(baseColor, _RevertTonemapping);
+    half4 baseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, mainUV);
+    baseColor.rgb = RampBaseColor(baseColor.rgb, _RevertTonemapping);
 #ifndef _RECEIVE_SHADOWS_OFF
 #ifdef NO_SELF_SHADOW
     Light mainLight = GetMainLight();
@@ -160,7 +160,6 @@ half4 ToonShading(ToonVaryings varying)
 #else
     Light mainLight = GetMainLight();
 #endif
-
 
     half3 additionalLightColor = (half3)0;
 #ifdef _ADDITIONAL_LIGHTS
@@ -180,7 +179,6 @@ half4 ToonShading(ToonVaryings varying)
     }
 #endif
 
-
     // 间接光包含了环境光和GI，明暗面都会影响
     half3 indirectLight = SampleSH(half3(0, 0, 0));
     indirectLight += UNITY_LIGHTMODEL_AMBIENT;
@@ -199,7 +197,7 @@ half4 ToonShading(ToonVaryings varying)
     outColor.rgb = ToonDiffuse(diff,
         0.1,
         1,
-        baseColor,
+        baseColor.rgb,
         mainLightColor,
         lightColor,
         indirectLight,
@@ -211,7 +209,7 @@ half4 ToonShading(ToonVaryings varying)
     outColor.rgb = ToonDiffuse(diff,
         varying.color.r,
         tex_Light_Color.g,
-        baseColor,
+        baseColor.rgb,
         mainLightColor,
         additionalLightColor,
         indirectLight,
@@ -220,13 +218,12 @@ half4 ToonShading(ToonVaryings varying)
     outColor.rgb = ToonDiffuse(diff,
         varying.color.r,
         tex_Light_Color.g,
-        baseColor,
+        baseColor.rgb,
         mainLightColor,
         indirectLight,
         mainLight.shadowAttenuation);
 #endif
 #endif
-
 
     // 高光项
     half3 N = normalize(varying.normal);
@@ -242,7 +239,10 @@ half4 ToonShading(ToonVaryings varying)
     //outColor.rgb = complex_toon_specular(N, H, tex_Light_Color.b, tex_Light_Color.r);
 
     //Bloom factor
-    outColor.a = _BloomFactor;
+    if (writeBloom > 0)
+        outColor.a = _BloomFactor * baseColor.a * _BaseColor.a;
+    else
+        outColor.a = baseColor.a * _BaseColor.a;
 
     outColor.rgb *= _BaseColor.rgb;
 
@@ -343,9 +343,19 @@ ToonVaryings vert(ToonAttributes attribute)
 
 half4 frag(ToonVaryings varying) : COLOR
 {
-    return ToonShading(varying);
-} // End of frag
+    return ToonShading(varying, 1);
+} 
 
+half4 fragTransparent(ToonVaryings varying) : COLOR
+{
+    return ToonShading(varying, 0);
+}
 
+half4 fragTransparentOnlyAlpha(ToonVaryings varying) : COLOR
+{
+    half2 mainUV = TRANSFORM_TEX(varying.texcoord, _BaseMap);
+    half4 baseColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, mainUV);
+    return half4(0, 0, 0, _BloomFactor * baseColor.a * _BaseColor.a);
+}
 
 #endif // CHARACTER_AVATAR_INCLUDED

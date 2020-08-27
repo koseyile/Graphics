@@ -225,7 +225,7 @@ half4 fragBlendWithPBR(HybridVaryings varying) : COLOR
 #endif
 #endif
     toonVaryings.diff = varying.diff;
-    half4 toonColor = ToonShading(toonVaryings);
+    half4 toonColor = ToonShading(toonVaryings, 1);
 
     // PBR部分
     SurfaceData surfaceData;
