@@ -35,6 +35,9 @@ SAMPLER_CMP(sampler_MainLightShadowmapTexture);
 TEXTURE2D_SHADOW(_CustomShadowmapTexture);
 SAMPLER_CMP(sampler_CustomShadowmapTexture);
 
+TEXTURE2D(_CustomShadowAlphaTexture);
+SAMPLER(sampler_CustomShadowAlphaTexture);
+
 TEXTURE2D_SHADOW(_AdditionalLightsShadowmapTexture);
 SAMPLER_CMP(sampler_AdditionalLightsShadowmapTexture);
 
@@ -284,7 +287,10 @@ half CustomRealtimeShadow(float3 positionWS)
     if (shadowParams.z < 0.5f)
         return 1.0h;
 
-    return SampleShadowmap(TEXTURE2D_ARGS(_CustomShadowmapTexture, sampler_CustomShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
+    half shadowAlpha = SAMPLE_TEXTURE2D(_CustomShadowAlphaTexture, sampler_CustomShadowAlphaTexture, shadowCoord.xy).r;
+    real shadowAttenuation = SampleShadowmap(TEXTURE2D_ARGS(_CustomShadowmapTexture, sampler_CustomShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
+    shadowAttenuation = LerpWhiteTo(shadowAttenuation, shadowAlpha);
+    return shadowAttenuation;
 }
 
 

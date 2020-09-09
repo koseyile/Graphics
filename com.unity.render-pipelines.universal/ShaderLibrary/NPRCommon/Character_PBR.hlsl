@@ -333,6 +333,8 @@ half4 fragHybridPBR(HybridVaryings varying) : COLOR
 #endif
 #endif
 
+    colorPBR.a = _BloomFactor;
+
     // 根据_DitherAlpha的值来做棋盘格式渐隐渐出
     if (_UsingDitherAlpha)
         dither_clip(varying.scrpos, varying.scrpos.z);

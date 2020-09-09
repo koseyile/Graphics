@@ -29,7 +29,9 @@ namespace UnityEngine.Rendering.Universal.Internal
         Matrix4x4 m_ProjMatrix;
 
         RenderTargetHandle m_CustomShadowmap;
+        RenderTargetHandle m_CustomShadowAlpha;
         RenderTexture m_CustomShadowmapTexture;
+        RenderTexture m_ShadowAlphaTexture;
 
         Matrix4x4 m_CustomShadowMatrices;
 
@@ -55,6 +57,7 @@ namespace UnityEngine.Rendering.Universal.Internal
             CustomShadowConstantBuffer._ShadowOffset2 = Shader.PropertyToID("_CustomShadowOffset2");
             CustomShadowConstantBuffer._ShadowOffset3 = Shader.PropertyToID("_CustomShadowOffset3");
             m_CustomShadowmap.Init("_CustomShadowmapTexture");
+            m_CustomShadowAlpha.Init("_CustomShadowAlphaTexture");
             m_SupportsBoxFilterForShadows = Application.isMobilePlatform || SystemInfo.graphicsDeviceType == GraphicsDeviceType.Switch;
 
             m_ShadowmapWidth = 1024;
@@ -110,7 +113,10 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             m_CustomShadowmapTexture = ShadowUtils.GetTemporaryShadowTexture(m_ShadowmapWidth,
                     m_ShadowmapHeight, k_ShadowmapBufferBits);
-            ConfigureTarget(new RenderTargetIdentifier(m_CustomShadowmapTexture));
+            m_ShadowAlphaTexture = ShadowUtils.GetTemporaryShadowAlphaTexture(m_ShadowmapWidth,
+                m_ShadowmapHeight, 8);
+            ConfigureTarget(new RenderTargetIdentifier(m_ShadowAlphaTexture),
+                new RenderTargetIdentifier(m_CustomShadowmapTexture));
             ConfigureClear(ClearFlag.All, Color.black);
         }
 
@@ -138,11 +144,17 @@ namespace UnityEngine.Rendering.Universal.Internal
                 RenderTexture.ReleaseTemporary(m_CustomShadowmapTexture);
                 m_CustomShadowmapTexture = null;
             }
+            if (m_ShadowAlphaTexture)
+            {
+                RenderTexture.ReleaseTemporary(m_ShadowAlphaTexture);
+                m_ShadowAlphaTexture = null;
+            }
         }
 
         void Clear()
         {
             m_CustomShadowmapTexture = null;
+            m_ShadowAlphaTexture = null;
             m_CustomShadowMatrices = Matrix4x4.identity;
         }
 
@@ -190,6 +202,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         {
             Light light = shadowLight.light;
             cmd.SetGlobalTexture(m_CustomShadowmap.id, m_CustomShadowmapTexture);
+            cmd.SetGlobalTexture(m_CustomShadowAlpha.id, m_ShadowAlphaTexture);
             cmd.SetGlobalMatrix(CustomShadowConstantBuffer._CustomWorldToShadow, m_CustomShadowMatrices);
 
             if (softShadows)
