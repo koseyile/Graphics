@@ -80,7 +80,7 @@ half3 ToonDiffuseInPBR(half factor,
         half ramp = sigmoid(threshold, _LightArea, _ShadowFeather);
         half3 shadowColor = lerp(_FirstShadowMultColor, mainLightColor, ramp);
 #endif
-        shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
+        shadowColor *= shadowAttenuation < 1 ? LerpWhiteTo(shadowAttenuation, 1 - _ShadowDarkness) : 1.0h;
         diffColor = baseTexColor * shadowColor;
     }
     return diffColor;

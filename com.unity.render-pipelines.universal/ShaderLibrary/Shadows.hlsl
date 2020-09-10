@@ -287,9 +287,11 @@ half CustomRealtimeShadow(float3 positionWS)
     if (shadowParams.z < 0.5f)
         return 1.0h;
 
-    half shadowAlpha = SAMPLE_TEXTURE2D(_CustomShadowAlphaTexture, sampler_CustomShadowAlphaTexture, shadowCoord.xy).r;
     real shadowAttenuation = SampleShadowmap(TEXTURE2D_ARGS(_CustomShadowmapTexture, sampler_CustomShadowmapTexture), shadowCoord, shadowSamplingData, shadowParams, false);
+#ifdef RECEIVE_TRANSPARENT_SHADOW
+    half shadowAlpha = SAMPLE_TEXTURE2D(_CustomShadowAlphaTexture, sampler_CustomShadowAlphaTexture, shadowCoord.xy).r;
     shadowAttenuation = LerpWhiteTo(shadowAttenuation, shadowAlpha);
+#endif
     return shadowAttenuation;
 }
 
