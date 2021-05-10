@@ -80,7 +80,7 @@ half3 ToonDiffuseInPBR(half factor,
         half ramp = sigmoid(threshold, _LightArea, _ShadowFeather);
         half3 shadowColor = lerp(_FirstShadowMultColor, mainLightColor, ramp);
 #endif
-        shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
+        shadowColor *= shadowAttenuation < 1 ? LerpWhiteTo(shadowAttenuation, 1 - _ShadowDarkness) : 1.0h;
         diffColor = baseTexColor * shadowColor;
     }
     return diffColor;
@@ -332,6 +332,8 @@ half4 fragHybridPBR(HybridVaryings varying) : COLOR
     colorPBR.rgb = rgFragEx(colorPBR.rgb, normalize(varying.normal), normalize(_WorldSpaceCameraPos.xyz - varying.posWS), varying.diff.x, _LightArea);
 #endif
 #endif
+
+    colorPBR.a = _BloomFactor;
 
     // 根据_DitherAlpha的值来做棋盘格式渐隐渐出
     if (_UsingDitherAlpha)

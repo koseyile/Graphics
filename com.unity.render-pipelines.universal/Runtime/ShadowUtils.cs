@@ -426,6 +426,15 @@ namespace UnityEngine.Rendering.Universal
             return shadowTexture;
         }
 
+        public static RenderTexture GetTemporaryShadowAlphaTexture(int width, int height, int bits)
+        {
+            var shadowTexture = RenderTexture.GetTemporary(width, height, bits, RenderTextureFormat.R8);
+            shadowTexture.filterMode = m_ForceShadowPointSampling ? FilterMode.Point : FilterMode.Bilinear;
+            shadowTexture.wrapMode = TextureWrapMode.Clamp;
+
+            return shadowTexture;
+        }
+
         static public Matrix4x4 GetShadowTransform(Matrix4x4 proj, Matrix4x4 view)
         {
             // Currently CullResults ComputeDirectionalShadowMatricesAndCullingPrimitives doesn't

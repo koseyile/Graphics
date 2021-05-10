@@ -64,7 +64,8 @@ half3 ToonDiffuse(half factor,
         half3 lightColor = lerp(0, additionalColor, ramp);
 #endif
 #endif
-        shadowColor *= shadowAttenuation < 0.5h ? _ShadowDarkness : 1.0h;
+        //shadowColor *= shadowAttenuation;
+        shadowColor *= shadowAttenuation < 1 ? LerpWhiteTo(shadowAttenuation, 1 - _ShadowDarkness): 1.0h;
         diffColor = baseTexColor * shadowColor;
 #ifdef _ADDITIONAL_LIGHTS
         diffColor += lightColor * baseTexColor;
